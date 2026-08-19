@@ -3,16 +3,22 @@ package com.nexora.auth.security;
 import com.nexora.user.entity.User;
 import com.nexora.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-import java.util.stream.Collectors;
-
+/**
+ * WHAT IS UserDetailsService?
+ * This is the one method Spring Security calls whenever it needs to
+ * look up "who is this user, by their identifier" — during login, and
+ * potentially when re-validating a session. We implement it by
+ * fetching from MySQL via UserRepository and wrapping the result in
+ * our UserPrincipal adapter (see UserPrincipal.java).
+ *
+ * Note: for Nexora, "username" in Spring Security terms IS the email
+ * address — we never introduced a separate username field.
+ */
 @Service
 @RequiredArgsConstructor
 public class NexoraUserDetailsService implements UserDetailsService {
@@ -20,30 +26,10 @@ public class NexoraUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email)
-            throws UsernameNotFoundException {
-
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("No user found with email: " + email));
 
-        Set<GrantedAuthority> authorities = user.getRoles()
-                .stream()
-                .map(role ->
-                        new SimpleGrantedAuthority(
-                                "ROLE_" + role.getName().name()
-                        )
-                )
-                .collect(Collectors.toSet());
-
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(user.getPassword())
-                .authorities(authorities)
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
-                .disabled(!"ACTIVE".equalsIgnoreCase(user.getStatus()))
-                .build();
+        return new UserPrincipal(user);
     }
 }
