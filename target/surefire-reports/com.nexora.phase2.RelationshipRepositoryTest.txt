@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.nexora.phase2.RelationshipRepositoryTest
+-------------------------------------------------------------------------------
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.382 s -- in com.nexora.phase2.RelationshipRepositoryTest

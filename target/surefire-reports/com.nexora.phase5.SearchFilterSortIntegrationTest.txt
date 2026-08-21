@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.nexora.phase5.SearchFilterSortIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 15, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.742 s -- in com.nexora.phase5.SearchFilterSortIntegrationTest

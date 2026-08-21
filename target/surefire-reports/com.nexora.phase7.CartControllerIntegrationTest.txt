@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.nexora.phase7.CartControllerIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 14, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.899 s -- in com.nexora.phase7.CartControllerIntegrationTest

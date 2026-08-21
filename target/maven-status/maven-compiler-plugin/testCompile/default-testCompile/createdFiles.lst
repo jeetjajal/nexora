@@ -1,0 +1,11 @@
+com\nexora\phase2\RelationshipRepositoryTest.class
+com\nexora\phase6\InventoryConcurrencyIntegrationTest.class
+com\nexora\phase3\AuthControllerIntegrationTest.class
+com\nexora\user\UserServiceTest.class
+com\nexora\phase3\AuthServiceTest.class
+com\nexora\phase3\JwtServiceTest.class
+com\nexora\phase4\StoreProductInventoryIntegrationTest.class
+com\nexora\phase5\SearchFilterSortIntegrationTest.class
+com\nexora\phase6\InventoryServiceTest.class
+com\nexora\phase7\CartControllerIntegrationTest.class
+com\nexora\phase7\CartServiceTest.class

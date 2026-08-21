@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.nexora.phase3.AuthControllerIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.397 s -- in com.nexora.phase3.AuthControllerIntegrationTest
