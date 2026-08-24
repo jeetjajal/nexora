@@ -1,0 +1,293 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.nexora:nexora >--------------------------
+[INFO] Building nexora 0.1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ nexora ---
+[INFO] Deleting E:\Nexora\phases\nexora8\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ nexora ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ nexora ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 103 source files with javac [debug parameters release 17] to target\classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ nexora ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ nexora ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 13 source files with javac [debug parameters release 17] to target\test-classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ nexora ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.nexora.phase5.SearchFilterSortIntegrationTest
+17:42:45.116 [main] INFO org.springframework.test.context.support.AnnotationConfigContextLoaderUtils -- Could not detect default configuration classes for test class [com.nexora.phase5.SearchFilterSortIntegrationTest]: SearchFilterSortIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+17:42:45.264 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.nexora.NexoraApplication for test class com.nexora.phase5.SearchFilterSortIntegrationTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.3.4)
+
+2026-08-22T17:42:45.765+05:30  INFO 11272 --- [           main] c.n.p.SearchFilterSortIntegrationTest    : Starting SearchFilterSortIntegrationTest using Java 21.0.11 with PID 11272 (started by hp in E:\Nexora\phases\nexora8)
+2026-08-22T17:42:45.765+05:30  INFO 11272 --- [           main] c.n.p.SearchFilterSortIntegrationTest    : No active profile set, falling back to 1 default profile: "default"
+2026-08-22T17:42:47.014+05:30  INFO 11272 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-08-22T17:42:47.132+05:30  INFO 11272 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 104 ms. Found 11 JPA repository interfaces.
+2026-08-22T17:42:47.870+05:30  INFO 11272 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-08-22T17:42:47.964+05:30  INFO 11272 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.5.3.Final
+2026-08-22T17:42:48.013+05:30  INFO 11272 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-08-22T17:42:48.479+05:30  INFO 11272 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-08-22T17:42:48.526+05:30  INFO 11272 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-08-22T17:42:48.776+05:30  INFO 11272 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:nexora_test user=SA
+2026-08-22T17:42:48.776+05:30  INFO 11272 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-08-22T17:42:48.807+05:30  WARN 11272 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-08-22T17:42:50.240+05:30  INFO 11272 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+Hibernate: drop table if exists addresses cascade 
+Hibernate: drop table if exists cart_items cascade 
+Hibernate: drop table if exists carts cascade 
+Hibernate: drop table if exists categories cascade 
+Hibernate: drop table if exists inventory cascade 
+Hibernate: drop table if exists order_items cascade 
+Hibernate: drop table if exists orders cascade 
+Hibernate: drop table if exists product_categories cascade 
+Hibernate: drop table if exists products cascade 
+Hibernate: drop table if exists roles cascade 
+Hibernate: drop table if exists store_categories cascade 
+Hibernate: drop table if exists stores cascade 
+Hibernate: drop table if exists user_roles cascade 
+Hibernate: drop table if exists users cascade 
+Hibernate: create table addresses (is_default boolean not null, latitude float(53), longitude float(53), created_at timestamp(6) not null, id bigint generated by default as identity, updated_at timestamp(6) not null, user_id bigint not null, pincode varchar(10) not null, label varchar(30), city varchar(100) not null, country varchar(100) not null, state varchar(100) not null, address_line1 varchar(255) not null, address_line2 varchar(255), primary key (id))
+Hibernate: create table cart_items (quantity integer not null, cart_id bigint not null, created_at timestamp(6) not null, id bigint generated by default as identity, product_id bigint not null, updated_at timestamp(6) not null, primary key (id), constraint uk_cart_items_cart_product unique (cart_id, product_id))
+Hibernate: create table carts (created_at timestamp(6) not null, id bigint generated by default as identity, updated_at timestamp(6) not null, user_id bigint not null unique, primary key (id))
+Hibernate: create table categories (id bigint generated by default as identity, name varchar(100) not null unique, image_url varchar(255), primary key (id))
+Hibernate: create table inventory (low_stock_threshold integer not null, quantity integer not null, id bigint generated by default as identity, product_id bigint not null unique, updated_at timestamp(6) not null, primary key (id))
+Hibernate: create table order_items (quantity integer not null, subtotal numeric(10,2) not null, unit_price numeric(10,2) not null, created_at timestamp(6) not null, id bigint generated by default as identity, order_id bigint not null, product_id bigint not null, product_name_snapshot varchar(150) not null, primary key (id))
+Hibernate: create table orders (delivery_fee numeric(10,2) not null, subtotal numeric(10,2) not null, total_amount numeric(10,2) not null, created_at timestamp(6) not null, delivery_address_id bigint not null, id bigint generated by default as identity, store_id bigint not null, updated_at timestamp(6) not null, user_id bigint not null, status enum ('CANCELLED','CONFIRMED','CREATED','DELIVERED','OUT_FOR_DELIVERY','PAID','PAYMENT_PENDING','PICKED_UP','PREPARING','READY','REJECTED','RIDER_ASSIGNED') not null, primary key (id))
+Hibernate: create table product_categories (category_id bigint not null, product_id bigint not null, primary key (category_id, product_id))
+Hibernate: create table products (available boolean not null, discount numeric(5,2), price numeric(10,2) not null, created_at timestamp(6) not null, id bigint generated by default as identity, store_id bigint not null, updated_at timestamp(6) not null, name varchar(150) not null, description varchar(1000), image_url varchar(255), primary key (id))
+Hibernate: create table roles (id bigint generated by default as identity, name enum ('ADMIN','CUSTOMER','DELIVERY_PARTNER','STORE_OWNER') not null unique, primary key (id))
+Hibernate: create table store_categories (category_id bigint not null, store_id bigint not null, primary key (category_id, store_id))
+Hibernate: create table stores (closing_time time(6), opening_time time(6), created_at timestamp(6) not null, id bigint generated by default as identity, owner_id bigint not null, updated_at timestamp(6) not null, name varchar(150) not null, description varchar(1000), image_url varchar(255), status enum ('CLOSED','OPEN','SUSPENDED') not null, primary key (id))
+Hibernate: create table user_roles (role_id bigint not null, user_id bigint not null, primary key (role_id, user_id))
+Hibernate: create table users (created_at timestamp(6) not null, id bigint generated by default as identity, updated_at timestamp(6) not null, phone varchar(20), status varchar(20) not null, name varchar(100) not null, email varchar(150) not null unique, password varchar(255) not null, primary key (id))
+Hibernate: create index idx_addresses_user_id on addresses (user_id)
+Hibernate: create index idx_cart_items_cart_id on cart_items (cart_id)
+Hibernate: create index idx_order_items_order_id on order_items (order_id)
+Hibernate: create index idx_orders_user_id on orders (user_id)
+Hibernate: create index idx_orders_store_id on orders (store_id)
+Hibernate: create index idx_orders_status on orders (status)
+Hibernate: create index idx_products_store_id on products (store_id)
+Hibernate: create index idx_stores_owner_id on stores (owner_id)
+Hibernate: alter table if exists addresses add constraint FK1fa36y2oqhao3wgg2rw1pi459 foreign key (user_id) references users
+Hibernate: alter table if exists cart_items add constraint FKpcttvuq4mxppo8sxggjtn5i2c foreign key (cart_id) references carts
+Hibernate: alter table if exists cart_items add constraint FK1re40cjegsfvw58xrkdp6bac6 foreign key (product_id) references products
+Hibernate: alter table if exists carts add constraint FKb5o626f86h46m4s7ms6ginnop foreign key (user_id) references users
+Hibernate: alter table if exists inventory add constraint FKq2yge7ebtfuvwufr6lwfwqy9l foreign key (product_id) references products
+Hibernate: alter table if exists order_items add constraint FKbioxgbv59vetrxe0ejfubep1w foreign key (order_id) references orders
+Hibernate: alter table if exists order_items add constraint FKocimc7dtr037rh4ls4l95nlfi foreign key (product_id) references products
+Hibernate: alter table if exists orders add constraint FK3s2t83m5ddty3rgomn94d4ht6 foreign key (delivery_address_id) references addresses
+Hibernate: alter table if exists orders add constraint FKnqkwhwveegs6ne9ra90y1gq0e foreign key (store_id) references stores
+Hibernate: alter table if exists orders add constraint FK32ql8ubntj5uh44ph9659tiih foreign key (user_id) references users
+Hibernate: alter table if exists product_categories add constraint FKd112rx0alycddsms029iifrih foreign key (category_id) references categories
+Hibernate: alter table if exists product_categories add constraint FKlda9rad6s180ha3dl1ncsp8n7 foreign key (product_id) references products
+Hibernate: alter table if exists products add constraint FKgcyffheofvmy2x5l78xam63mc foreign key (store_id) references stores
+Hibernate: alter table if exists store_categories add constraint FKjbjnfxkawvr0gb7bs9vltkf08 foreign key (category_id) references categories
+Hibernate: alter table if exists store_categories add constraint FKlbd5qfh13gjr15dv3o2lokssk foreign key (store_id) references stores
+Hibernate: alter table if exists stores add constraint FK62smc31fbgclsu56aa4y2hrxg foreign key (owner_id) references users
+Hibernate: alter table if exists user_roles add constraint FKh8ciramu9cc9q3qcqiv4ue8a6 foreign key (role_id) references roles
+Hibernate: alter table if exists user_roles add constraint FKhfh9dx7w3ubf1co1vdev94g3f foreign key (user_id) references users
+2026-08-22T17:42:50.334+05:30  INFO 11272 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-08-22T17:42:50.943+05:30  INFO 11272 --- [           main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name authenticationProvider
+2026-08-22T17:42:50.943+05:30  WARN 11272 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with an AuthenticationProvider bean. UserDetailsService beans will not be used for username/password login. Consider removing the AuthenticationProvider bean. Alternatively, consider using the UserDetailsService in a manually instantiated DaoAuthenticationProvider.
+2026-08-22T17:42:51.092+05:30  INFO 11272 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-08-22T17:42:52.006+05:30  WARN 11272 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-08-22T17:42:52.973+05:30  INFO 11272 --- [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-08-22T17:42:52.973+05:30  INFO 11272 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-08-22T17:42:52.973+05:30  INFO 11272 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-08-22T17:42:53.005+05:30  INFO 11272 --- [           main] c.n.p.SearchFilterSortIntegrationTest    : Started SearchFilterSortIntegrationTest in 7.569 seconds (process running for 8.795)
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.155+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [CUSTOMER]
+Hibernate: insert into roles (name,id) values (?,default)
+2026-08-22T17:42:53.204+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [CUSTOMER]
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.236+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [STORE_OWNER]
+Hibernate: insert into roles (name,id) values (?,default)
+2026-08-22T17:42:53.236+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [STORE_OWNER]
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.236+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [DELIVERY_PARTNER]
+Hibernate: insert into roles (name,id) values (?,default)
+2026-08-22T17:42:53.251+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [DELIVERY_PARTNER]
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.251+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [ADMIN]
+Hibernate: insert into roles (name,id) values (?,default)
+2026-08-22T17:42:53.251+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [ADMIN]
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+WARNING: A Java agent has been loaded dynamically (C:\Users\hp\.m2\repository\net\bytebuddy\byte-buddy-agent\1.14.19\byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+Hibernate: select i1_0.id,i1_0.low_stock_threshold,i1_0.product_id,i1_0.quantity,i1_0.updated_at from inventory i1_0
+Hibernate: select p1_0.id,p1_0.available,p1_0.created_at,p1_0.description,p1_0.discount,p1_0.image_url,p1_0.name,p1_0.price,p1_0.store_id,p1_0.updated_at from products p1_0
+Hibernate: select s1_0.id,s1_0.closing_time,s1_0.created_at,s1_0.description,s1_0.image_url,s1_0.name,s1_0.opening_time,s1_0.owner_id,s1_0.status,s1_0.updated_at from stores s1_0
+Hibernate: select c1_0.id,c1_0.image_url,c1_0.name from categories c1_0
+Hibernate: select u1_0.id,u1_0.created_at,u1_0.email,u1_0.name,u1_0.password,u1_0.phone,u1_0.status,u1_0.updated_at from users u1_0
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.782+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [CUSTOMER]
+Hibernate: select r1_0.id,r1_0.name from roles r1_0 where r1_0.name=?
+2026-08-22T17:42:53.782+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:ENUM) <- [STORE_OWNER]
+Hibernate: insert into users (created_at,email,name,password,phone,status,updated_at,id) values (?,?,?,?,?,?,?,default)
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-08-22T17:42:53.876504700]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- [owner-f02b6bf8-89a7-4d09-99e6-2144ecb41257@test.com]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [Owner One]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [$2a$10$K22vKZ1.iCMO4nFTlslK2.Qo9Wh/mPKbJAMNBHySSuh3Dl6fXvIhe]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [9999999999]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ACTIVE]
+2026-08-22T17:42:53.876+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (7:TIMESTAMP) <- [2026-08-22T17:42:53.876504700]
+Hibernate: insert into user_roles (user_id,role_id) values (?,?)
+2026-08-22T17:42:53.892+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [1]
+2026-08-22T17:42:53.892+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [2]
+Hibernate: insert into users (created_at,email,name,password,phone,status,updated_at,id) values (?,?,?,?,?,?,?,default)
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIMESTAMP) <- [2026-08-22T17:42:53.970748400]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- [customer-063d445a-dc61-4a28-8a2b-71aa0770843f@test.com]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [Customer]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [$2a$10$bxWH8cNNTtBjMXWCexjaBew0cl0pCOt2NLrUwmeDHas16l8bzKk/G]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [8888888888]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (6:VARCHAR) <- [ACTIVE]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (7:TIMESTAMP) <- [2026-08-22T17:42:53.970748400]
+Hibernate: insert into user_roles (user_id,role_id) values (?,?)
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+2026-08-22T17:42:53.970+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [1]
+Hibernate: insert into stores (closing_time,created_at,description,image_url,name,opening_time,owner_id,status,updated_at,id) values (?,?,?,?,?,?,?,?,?,default)
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIME) <- [23:00]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-08-22T17:42:54.087972800]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [Test store]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [https://example.com/store.jpg]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [Rajkot Pizza Hub 20b14b7b]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (6:TIME) <- [10:00]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (7:BIGINT) <- [1]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (8:ENUM) <- [OPEN]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (9:TIMESTAMP) <- [2026-08-22T17:42:54.087972800]
+Hibernate: insert into stores (closing_time,created_at,description,image_url,name,opening_time,owner_id,status,updated_at,id) values (?,?,?,?,?,?,?,?,?,default)
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:TIME) <- [23:00]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:TIMESTAMP) <- [2026-08-22T17:42:54.087972800]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (3:VARCHAR) <- [Test store]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (4:VARCHAR) <- [https://example.com/store.jpg]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (5:VARCHAR) <- [Green Grocery 20b14b7b]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (6:TIME) <- [10:00]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (7:BIGINT) <- [1]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (8:ENUM) <- [OPEN]
+2026-08-22T17:42:54.087+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (9:TIMESTAMP) <- [2026-08-22T17:42:54.087972800]
+Hibernate: select u1_0.id,u1_0.created_at,u1_0.email,u1_0.name,u1_0.password,u1_0.phone,u1_0.status,u1_0.updated_at from users u1_0 where u1_0.email=?
+2026-08-22T17:42:54.170+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [customer-063d445a-dc61-4a28-8a2b-71aa0770843f@test.com]
+Hibernate: select r1_0.user_id,r1_1.id,r1_1.name from user_roles r1_0 join roles r1_1 on r1_1.id=r1_0.role_id where r1_0.user_id=?
+2026-08-22T17:42:54.170+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+Hibernate: select s1_0.id,s1_0.closing_time,s1_0.created_at,s1_0.description,s1_0.image_url,s1_0.name,s1_0.opening_time,s1_0.owner_id,s1_0.status,s1_0.updated_at from stores s1_0 where lower(s1_0.name) like ? escape '' offset ? rows fetch first ? rows only
+2026-08-22T17:42:54.249+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (1:VARCHAR) <- [%pizza 20b14b7b%]
+2026-08-22T17:42:54.249+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [0]
+2026-08-22T17:42:54.249+05:30 TRACE 11272 --- [           main] org.hibernate.orm.jdbc.bind              : binding parameter (3:INTEGER) <- [10]
+2026-08-22T17:42:54.281+05:30  WARN 11272 --- [           main] ration$PageModule$WarningLoggingModifier : Serializing PageImpl instances as-is is not supported, meaning that there is no guarantee about the stability of the resulting JSON structure!
+	For a stable JSON structure, please use Spring Data's PagedModel (globally via @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO))
+	or Spring HATEOAS and Spring Data's PagedResourcesAssembler as documented in https://docs.spring.io/spring-data/commons/reference/repositories/core-extensions.html#core.web.pageables.
+
+
+MockHttpServletRequest:
+      HTTP Method = GET
+      Request URI = /api/v1/stores
+       Parameters = {name=[pizza 20b14b7b]}
+          Headers = [Authorization:"Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJjdXN0b21lci0wNjNkNDQ1YS1kYzYxLTRhMjgtOGEyYi03MWFhMDc3MDg0M2ZAdGVzdC5jb20iLCJ1c2VySWQiOjIsInJvbGVzIjpbIkNVU1RPTUVSIl0sImlhdCI6MTc4NzQwMDc3NCwiZXhwIjoxNzg3NDA0Mzc0fQ.CQYPYqDQIvLC3uIggjT5cRPbZmGy9VxPIn6ROUPsb6cv9Po1C1d_Sn3nnUD0eKwzfhZed8KqOdthdOSRwdDLMQ"]
+             Body = null
+    Session Attrs = {}
+
+Handler:
+             Type = com.nexora.store.controller.StoreController
+           Method = com.nexora.store.controller.StoreController#getAllStores(String, String, StoreStatus, Pageable)
+
+Async:
+    Async started = false
+     Async result = null
+
+Resolved Exception:
+             Type = null
+
+ModelAndView:
+        View name = null
+             View = null
+            Model = null
+
+FlashMap:
+       Attributes = null
+
+MockHttpServletResponse:
+           Status = 200
+    Error message = null
+          Headers = [Content-Type:"application/json", X-Content-Type-Options:"nosniff", X-XSS-Protection:"0", Cache-Control:"no-cache, no-store, max-age=0, must-revalidate", Pragma:"no-cache", Expires:"0", X-Frame-Options:"DENY"]
+     Content type = application/json
+             Body = {"success":true,"message":"Stores fetched successfully","data":{"content":[],"pageable":{"pageNumber":0,"pageSize":10,"sort":{"sorted":false,"empty":true,"unsorted":true},"offset":0,"paged":true,"unpaged":false},"totalPages":0,"totalElements":0,"last":true,"first":true,"size":10,"number":0,"sort":{"sorted":false,"empty":true,"unsorted":true},"numberOfElements":0,"empty":true},"timestamp":"2026-08-22T17:42:54.2498666"}
+    Forwarded URL = null
+   Redirected URL = null
+          Cookies = []
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 9.453 s <<< FAILURE! -- in com.nexora.phase5.SearchFilterSortIntegrationTest
+[ERROR] com.nexora.phase5.SearchFilterSortIntegrationTest.searchStoresByName -- Time elapsed: 1.076 s <<< FAILURE!
+java.lang.AssertionError: JSON path "$.data.content.length()" expected:<1> but was:<0>
+	at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:59)
+	at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:122)
+	at org.springframework.test.util.JsonPathExpectationsHelper.assertValue(JsonPathExpectationsHelper.java:123)
+	at org.springframework.test.web.servlet.result.JsonPathResultMatchers.lambda$value$2(JsonPathResultMatchers.java:111)
+	at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
+	at com.nexora.phase5.SearchFilterSortIntegrationTest.searchStoresByName(SearchFilterSortIntegrationTest.java:169)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   SearchFilterSortIntegrationTest.searchStoresByName:169 JSON path "$.data.content.length()" expected:<1> but was:<0>
+[INFO] 
+[ERROR] Tests run: 1, Failures: 1, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  21.412 s
+[INFO] Finished at: 2026-08-22T17:42:54+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project nexora: There are test failures.
+[ERROR] 
+[ERROR] Please refer to E:\Nexora\phases\nexora8\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
