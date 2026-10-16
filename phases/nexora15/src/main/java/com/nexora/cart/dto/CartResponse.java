@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -19,7 +20,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CartResponse {
+public class CartResponse implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Long id;
     private List<CartItemResponse> items;
     private Integer totalItemCount; // sum of all quantities

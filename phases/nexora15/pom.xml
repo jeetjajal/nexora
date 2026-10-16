@@ -111,6 +111,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Redis (Phase 15) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
         <!-- Lets tests spin up MockMvc with Spring Security applied
              (e.g. asserting a protected endpoint returns 401/403
              correctly) instead of security being silently skipped

@@ -38,8 +38,10 @@ import java.util.Set;
  * create/edit/delete a product under a store they don't own, even
  * though their role alone would pass the controller-level check.
  */
+import com.nexora.redis.service.RedisCacheService;
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Service
-@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository productRepository;
@@ -47,6 +49,29 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final InventoryRepository inventoryRepository;
     private final OrderItemRepository orderItemRepository;
+    private final RedisCacheService redisCacheService;
+
+    public ProductService(ProductRepository productRepository,
+                          StoreRepository storeRepository,
+                          CategoryRepository categoryRepository,
+                          InventoryRepository inventoryRepository,
+                          OrderItemRepository orderItemRepository,
+                          @Autowired(required = false) RedisCacheService redisCacheService) {
+        this.productRepository = productRepository;
+        this.storeRepository = storeRepository;
+        this.categoryRepository = categoryRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.orderItemRepository = orderItemRepository;
+        this.redisCacheService = redisCacheService;
+    }
+
+    public ProductService(ProductRepository productRepository,
+                          StoreRepository storeRepository,
+                          CategoryRepository categoryRepository,
+                          InventoryRepository inventoryRepository,
+                          OrderItemRepository orderItemRepository) {
+        this(productRepository, storeRepository, categoryRepository, inventoryRepository, orderItemRepository, null);
+    }
 
     @Transactional
     public ProductResponse createProduct(Long storeId, ProductRequest request, UserPrincipal caller) {
@@ -143,6 +168,10 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponse getProductById(Long id) {
+        if (redisCacheService != null) {
+            return redisCacheService.getWithFallback("nexora:product:" + id, ProductResponse.class, 600,
+                    () -> ProductMapper.toResponse(findProductOrThrow(id)));
+        }
         return ProductMapper.toResponse(findProductOrThrow(id));
     }
 
@@ -162,6 +191,11 @@ public class ProductService {
         product.setCategories(resolveCategories(request.getCategoryNames()));
 
         Product saved = productRepository.save(product);
+
+        if (redisCacheService != null) {
+            redisCacheService.delete("nexora:product:" + id);
+        }
+
         return ProductMapper.toResponse(saved);
     }
 
@@ -179,6 +213,11 @@ public class ProductService {
         product.setAvailable(false);
 
         Product saved = productRepository.save(product);
+
+        if (redisCacheService != null) {
+            redisCacheService.delete("nexora:product:" + id);
+        }
+
         return ProductMapper.toResponse(saved);
     }
 
@@ -207,6 +246,10 @@ public class ProductService {
                 .ifPresent(inventoryRepository::delete);
 
         productRepository.delete(product);
+
+        if (redisCacheService != null) {
+            redisCacheService.delete("nexora:product:" + id);
+        }
     }
 
     // ------------------------------------------------------------

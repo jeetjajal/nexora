@@ -36,12 +36,27 @@ import java.util.stream.Collectors;
  * loaded the real Store row and can compare its owner to the caller.
  * ADMIN always bypasses the ownership check — admins can manage any store.
  */
+import com.nexora.redis.service.RedisCacheService;
+import org.springframework.beans.factory.annotation.Autowired;
+
 @Service
-@RequiredArgsConstructor
 public class StoreService {
 
     private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
+    private final RedisCacheService redisCacheService;
+
+    public StoreService(StoreRepository storeRepository,
+                        CategoryRepository categoryRepository,
+                        @Autowired(required = false) RedisCacheService redisCacheService) {
+        this.storeRepository = storeRepository;
+        this.categoryRepository = categoryRepository;
+        this.redisCacheService = redisCacheService;
+    }
+
+    public StoreService(StoreRepository storeRepository, CategoryRepository categoryRepository) {
+        this(storeRepository, categoryRepository, null);
+    }
 
     @Transactional
     public StoreResponse createStore(StoreRequest request, UserPrincipal owner) {
@@ -89,6 +104,10 @@ public class StoreService {
 
     @Transactional(readOnly = true)
     public StoreResponse getStoreById(Long id) {
+        if (redisCacheService != null) {
+            return redisCacheService.getWithFallback("nexora:store:" + id, StoreResponse.class, 900,
+                    () -> StoreMapper.toResponse(findStoreOrThrow(id)));
+        }
         Store store = findStoreOrThrow(id);
         return StoreMapper.toResponse(store);
     }
@@ -113,6 +132,11 @@ public class StoreService {
         store.setCategories(resolveCategories(request.getCategoryNames()));
 
         Store saved = storeRepository.save(store);
+
+        if (redisCacheService != null) {
+            redisCacheService.delete("nexora:store:" + id);
+        }
+
         return StoreMapper.toResponse(saved);
     }
 
@@ -124,6 +148,11 @@ public class StoreService {
         store.setStatus(request.getStatus());
 
         Store saved = storeRepository.save(store);
+
+        if (redisCacheService != null) {
+            redisCacheService.delete("nexora:store:" + id);
+        }
+
         return StoreMapper.toResponse(saved);
     }
 
