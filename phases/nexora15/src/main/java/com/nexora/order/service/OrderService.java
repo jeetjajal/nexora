@@ -68,6 +68,9 @@ public class OrderService {
     private final com.nexora.idempotency.service.IdempotencyService idempotencyService;
     private final com.nexora.delivery.service.DeliveryService deliveryService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.redis.service.RedisCartCacheService redisCartCacheService;
+
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
 
@@ -343,6 +346,10 @@ public class OrderService {
          * now executes inside an active transaction.
          */
         cartItemRepository.deleteByCartId(cart.getId());
+
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
 
         return responses;
     }
