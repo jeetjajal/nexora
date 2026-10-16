@@ -46,9 +46,10 @@ public class StoreService {
     private final CategoryRepository categoryRepository;
     private final RedisCacheService redisCacheService;
 
+    @Autowired
     public StoreService(StoreRepository storeRepository,
                         CategoryRepository categoryRepository,
-                        @Autowired(required = false) RedisCacheService redisCacheService) {
+                        @org.springframework.lang.Nullable RedisCacheService redisCacheService) {
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
         this.redisCacheService = redisCacheService;

@@ -51,12 +51,13 @@ public class ProductService {
     private final OrderItemRepository orderItemRepository;
     private final RedisCacheService redisCacheService;
 
+    @Autowired
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
                           CategoryRepository categoryRepository,
                           InventoryRepository inventoryRepository,
                           OrderItemRepository orderItemRepository,
-                          @Autowired(required = false) RedisCacheService redisCacheService) {
+                          @org.springframework.lang.Nullable RedisCacheService redisCacheService) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;

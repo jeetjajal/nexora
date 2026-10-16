@@ -63,11 +63,12 @@ public class CartService {
     private final InventoryRepository inventoryRepository;
     private final RedisCartCacheService redisCartCacheService;
 
+    @Autowired
     public CartService(CartRepository cartRepository,
                        CartItemRepository cartItemRepository,
                        ProductRepository productRepository,
                        InventoryRepository inventoryRepository,
-                       @Autowired(required = false) RedisCartCacheService redisCartCacheService) {
+                       @org.springframework.lang.Nullable RedisCartCacheService redisCartCacheService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.productRepository = productRepository;
