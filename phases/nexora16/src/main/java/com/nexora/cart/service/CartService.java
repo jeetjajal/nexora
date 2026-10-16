@@ -49,20 +49,57 @@ import java.util.List;
  * see an insufficient-stock error at THAT point, not before. This is
  * standard, expected e-commerce behavior (carts don't lock inventory).
  */
+import com.nexora.redis.service.RedisCartCacheService;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Optional;
+
 @Service
-@RequiredArgsConstructor
 public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
+    private final RedisCartCacheService redisCartCacheService;
+
+    public CartService(CartRepository cartRepository,
+                       CartItemRepository cartItemRepository,
+                       ProductRepository productRepository,
+                       InventoryRepository inventoryRepository,
+                       @Autowired(required = false) RedisCartCacheService redisCartCacheService) {
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.productRepository = productRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.redisCartCacheService = redisCartCacheService;
+    }
+
+    public CartService(CartRepository cartRepository,
+                       CartItemRepository cartItemRepository,
+                       ProductRepository productRepository,
+                       InventoryRepository inventoryRepository) {
+        this(cartRepository, cartItemRepository, productRepository, inventoryRepository, null);
+    }
 
     @Transactional
     public CartResponse getCart(UserPrincipal caller) {
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            Optional<CartResponse> cached = redisCartCacheService.getCachedCart(caller.getId());
+            if (cached.isPresent()) {
+                return cached.get();
+            }
+        }
+
         Cart cart = getOrCreateCartForUser(caller);
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
-        return CartMapper.toResponse(cart, items);
+        CartResponse response = CartMapper.toResponse(cart, items);
+
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.cacheCart(caller.getId(), response);
+        }
+
+        return response;
     }
 
     @Transactional
@@ -115,6 +152,11 @@ public class CartService {
          * or under a mocked repository.
          */
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
+
         return CartMapper.toResponse(cart, items);
     }
 
@@ -137,6 +179,10 @@ public class CartService {
         item.setQuantity(request.getQuantity());
         cartItemRepository.save(item);
 
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
+
         return getCart(caller);
     }
 
@@ -152,6 +198,10 @@ public class CartService {
 
         cartItemRepository.delete(item);
 
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
+
         return getCart(caller);
     }
 
@@ -160,6 +210,10 @@ public class CartService {
         Cart cart = getOrCreateCartForUser(caller);
 
         cartItemRepository.deleteByCartId(cart.getId());
+
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
 
         return getCart(caller);
     }

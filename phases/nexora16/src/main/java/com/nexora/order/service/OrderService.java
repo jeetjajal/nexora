@@ -13,6 +13,7 @@ import com.nexora.exception.ForbiddenOperationException;
 import com.nexora.exception.ResourceNotFoundException;
 import com.nexora.inventory.service.InventoryService;
 import com.nexora.kafka.producer.KafkaEventProducer;
+import com.nexora.redis.service.RedisCartCacheService;
 import com.nexora.order.dto.CheckoutRequest;
 import com.nexora.order.dto.OrderResponse;
 import com.nexora.order.dto.OrderStatusUpdateRequest;
@@ -69,6 +70,9 @@ public class OrderService {
     private final com.nexora.idempotency.service.IdempotencyService idempotencyService;
     private final com.nexora.delivery.service.DeliveryService deliveryService;
     private final KafkaEventProducer kafkaEventProducer;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RedisCartCacheService redisCartCacheService;
 
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
@@ -352,6 +356,9 @@ public class OrderService {
          * now executes inside an active transaction.
          */
         cartItemRepository.deleteByCartId(cart.getId());
+        if (redisCartCacheService != null && caller != null && caller.getId() != null) {
+            redisCartCacheService.evictCart(caller.getId());
+        }
 
         return responses;
     }
