@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nexora-ingress
+  namespace: nexora-production
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "15"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  tls:
+    - hosts:
+        - api.nexora.com
+      secretName: nexora-tls-cert
+  rules:
+    - host: api.nexora.com
+      http:
+        paths:
+          - path: /api/v1/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: nexora-order-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nexora-backend
+                port:
+                  number: 80

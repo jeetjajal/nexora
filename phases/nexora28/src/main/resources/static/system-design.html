@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora - Final SDE & System Design Optimization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --primary-light: #D1FAE5;
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --accent-purple: #8B5CF6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); line-height: 1.5; padding: 2rem 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 1.5rem; }
+        .badge { background: #DCFCE7; color: #15803D; font-size: 0.8rem; font-weight: 700; padding: 0.3rem 0.8rem; border-radius: 9999px; text-transform: uppercase; }
+        h1 { font-size: 2rem; font-weight: 800; color: #0F172A; }
+        .subtitle { color: var(--text-muted); font-size: 1rem; }
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .accordion-item { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; overflow: hidden; background: #fff; }
+        .accordion-header { padding: 1rem; background: #F8FAFC; font-weight: 600; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .accordion-header:hover { background: #F1F5F9; }
+        .accordion-body { padding: 1rem; display: none; font-size: 0.9rem; border-top: 1px solid var(--border); }
+        .tag-pill { background: #E2E8F0; color: #334155; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; margin-right: 0.4rem; display: inline-block; margin-top: 0.4rem; }
+        .arch-box { background: #0F172A; color: #E2E8F0; padding: 1.5rem; border-radius: 12px; font-family: monospace; font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; overflow-x: auto; }
+        .btn { background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; margin-top: 0.5rem; }
+        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+        th { background: #F1F5F9; font-weight: 600; color: #475569; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <h1>Nexora SDE Capstone & System Design</h1>
+                <span class="badge">Phase 28 (Final SDE Level)</span>
+            </div>
+            <p class="subtitle">Complete SDE Interview Checklist (16 Questions), High-Scale (1M Users) Blueprint & Failure Matrices</p>
+        </div>
+        <button class="btn" onclick="fetchData()">Refresh Capstone</button>
+    </header>
+
+    <!-- Architecture Visualizer -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.75rem;">🏛️ Master End-to-End System Architecture</h2>
+        <div class="arch-box" id="archBox">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+
+    <!-- 1 Million Users Blueprint -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">🚀 Blueprint: Scaling to 1,000,000 Users</h2>
+        <div id="scaleTiers" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+
+    <!-- Failure Scenarios & Recovery -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">🛡️ High Availability & Failure Recovery Matrix</h2>
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table>
+                <thead>
+                <tr>
+                    <th>Failure Event</th>
+                    <th>Impact</th>
+                    <th>Automated Mitigation</th>
+                    <th>Recovery Protocol & Consistency Guarantee</th>
+                </tr>
+                </thead>
+                <tbody id="failureTableBody">
+                <!-- Rendered via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SDE Interview Checklist (16 Questions) -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">🎯 Final SDE Interview Checklist (16 Core Topics)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Click each topic to view the in-depth architectural breakdown, code proofs, and SDE interview keywords.
+        </p>
+        <div id="checklistAccordion">
+            <!-- Rendered via JS -->
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchData() {
+        try {
+            const [checkRes, archRes, scaleRes, failRes] = await Promise.all([
+                fetch('/api/v1/system-design/interview-checklist').then(r => r.json()),
+                fetch('/api/v1/system-design/architecture').then(r => r.json()),
+                fetch('/api/v1/system-design/scale-to-1m').then(r => r.json()),
+                fetch('/api/v1/system-design/failure-matrix').then(r => r.json())
+            ]);
+
+            if (checkRes.success && checkRes.data) renderChecklist(checkRes.data);
+            if (archRes.success && archRes.data) renderArch(archRes.data);
+            if (scaleRes.success && scaleRes.data) renderScale(scaleRes.data);
+            if (failRes.success && failRes.data) renderFailures(failRes.data);
+        } catch (e) {
+            console.error('Error fetching system design data', e);
+        }
+    }
+
+    function renderArch(arch) {
+        let lines = `<span style="color: #F59E0B;">${arch.architectureType}</span>\n\n`;
+        for (const [step, desc] of Object.entries(arch.dataFlowSummary)) {
+            lines += `[${step}] --> ${desc}\n`;
+        }
+        document.getElementById('archBox').innerHTML = lines.replace(/\n/g, '<br>');
+    }
+
+    function renderScale(scale) {
+        const div = document.getElementById('scaleTiers');
+        let html = '';
+        for (const [tier, desc] of Object.entries(scale.scalingTiers)) {
+            html += `
+                <div style="background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 1rem;">
+                    <div style="font-weight: 700; color: #0F172A; font-size: 1rem;">${tier}</div>
+                    <div style="font-size: 0.85rem; color: #475569; margin-top: 0.5rem;">${desc}</div>
+                </div>
+            `;
+        }
+        div.innerHTML = html;
+    }
+
+    function renderFailures(matrix) {
+        const tbody = document.getElementById('failureTableBody');
+        tbody.innerHTML = matrix.map(m => `
+            <tr>
+                <td style="font-weight: 600; color: #991B1B;">${m.failureEvent}</td>
+                <td style="font-size: 0.85rem;">${m.impact}</td>
+                <td style="font-size: 0.85rem; color: #047857;">${m.automatedMitigation}</td>
+                <td style="font-size: 0.85rem;">
+                    <strong>Recovery:</strong> ${m.recoveryProtocol}<br>
+                    <small style="color: var(--primary-dark); font-weight: 600;">Guarantee: ${m.dataConsistencyGuarantee}</small>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function renderChecklist(items) {
+        const container = document.getElementById('checklistAccordion');
+        container.innerHTML = items.map((item, idx) => `
+            <div class="accordion-item">
+                <div class="accordion-header" onclick="toggleAccordion(${idx})">
+                    <span><strong>#${idx + 1}:</strong> ${item.question}</span>
+                    <span style="font-size: 0.75rem; background: #E0E7FF; color: #3730A3; padding: 0.2rem 0.5rem; border-radius: 4px;">${item.category}</span>
+                </div>
+                <div class="accordion-body" id="accBody${idx}">
+                    <p style="font-weight: 600; color: var(--primary-dark); margin-bottom: 0.5rem;">${item.shortAnswer}</p>
+                    <p style="color: #334155; margin-bottom: 0.75rem;">${item.inDepthExplanation}</p>
+                    <div style="font-size: 0.8rem; background: #F1F5F9; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem;">
+                        <strong>Nexora Code Proof:</strong> <code>${item.nexoraImplementationProof}</code>
+                    </div>
+                    <div>
+                        ${item.interviewKeywords.map(k => `<span class="tag-pill">${k}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function toggleAccordion(idx) {
+        const body = document.getElementById(`accBody${idx}`);
+        body.style.display = body.style.display === 'block' ? 'none' : 'block';
+    }
+
+    fetchData();
+</script>
+</body>
+</html>
