@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora - Performance & Load Testing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --primary-light: #D1FAE5;
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --accent-purple: #8B5CF6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); line-height: 1.5; padding: 2rem 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .badge { background: #EDE9FE; color: #6D28D9; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 9999px; text-transform: uppercase; }
+        h1 { font-size: 1.875rem; font-weight: 700; color: #0F172A; }
+        .subtitle { color: var(--text-muted); font-size: 0.95rem; }
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
+        .metric-box { background: #F8FAFC; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+        .metric-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+        .metric-num { font-size: 1.5rem; font-weight: 700; color: #0F172A; margin-top: 0.25rem; }
+        .table-responsive { overflow-x: auto; margin-top: 1rem; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.875rem; }
+        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+        th { background: #F1F5F9; font-weight: 600; color: #475569; }
+        .btn { background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+        .controls { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+        .controls select, .controls input { padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        .tag-green { background: #DEF7EC; color: #03543F; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .tag-red { background: #FEE2E2; color: #991B1B; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <h1>Nexora Performance Benchmarking & Load Testing</h1>
+                <span class="badge">Phase 27</span>
+            </div>
+            <p class="subtitle">Multi-Scenario Load Simulation, Latency Distributions (P50/P95/P99) & Optimization Audit</p>
+        </div>
+    </header>
+
+    <!-- Interactive Execution Panel -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">🚀 Run Live Scenario Load Test</h2>
+        <div class="controls">
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 600;">Scenario:</label><br>
+                <select id="scenarioSelect"></select>
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 600;">Virtual Users (VUs):</label><br>
+                <input type="number" id="vusInput" value="100" min="10" max="500" style="width: 100px;">
+            </div>
+            <div>
+                <label style="font-size: 0.8rem; font-weight: 600;">Duration (Seconds):</label><br>
+                <input type="number" id="durationInput" value="10" min="5" max="60" style="width: 100px;">
+            </div>
+            <div style="align-self: flex-end;">
+                <button class="btn" onclick="executeLoadTest()">Execute Benchmark</button>
+            </div>
+        </div>
+
+        <div id="resultContainer" style="display: none;">
+            <h3 id="resScenarioTitle" style="font-size: 1.1rem; margin-top: 1rem; color: #0F172A;"></h3>
+            <div class="grid-4">
+                <div class="metric-box">
+                    <div class="metric-label">Throughput</div>
+                    <div class="metric-num" id="resRps"></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);" id="resTotalReqs"></div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">P95 / P99 Latency</div>
+                    <div class="metric-num" id="resP95"></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);" id="resP99"></div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Error Rate</div>
+                    <div class="metric-num" id="resErrorRate"></div>
+                    <div style="font-size: 0.75rem; color: var(--primary);" id="resSuccessRate"></div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-label">Server Footprint</div>
+                    <div class="metric-num" id="resCpu"></div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);" id="resDb"></div>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 1rem; font-size: 0.85rem;">
+                    <strong>⚠️ Bottlenecks Identified:</strong>
+                    <ul id="resBottlenecks" style="margin-left: 1.25rem; margin-top: 0.5rem; color: #92400E;"></ul>
+                </div>
+                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 1rem; font-size: 0.85rem;">
+                    <strong>✅ SDE Optimizations Applied:</strong>
+                    <ul id="resOptimizations" style="margin-left: 1.25rem; margin-top: 0.5rem; color: #065F46;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Before vs After Comparison Report -->
+    <div class="card">
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">📈 Before vs After Optimization Performance Audit</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+            Direct comparison between baseline unoptimized monolith implementation vs Nexora distributed multi-tier stack.
+        </p>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                <tr>
+                    <th>Critical Flow</th>
+                    <th>Before (Monolith)</th>
+                    <th>After (Optimized)</th>
+                    <th>Key Engineering Optimization</th>
+                    <th>Architectural Gains</th>
+                </tr>
+                </thead>
+                <tbody id="comparisonTableBody">
+                <!-- Rendered via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function initPage() {
+        try {
+            const [scenRes, repRes] = await Promise.all([
+                fetch('/api/v1/loadtest/scenarios').then(r => r.json()),
+                fetch('/api/v1/loadtest/benchmark/before-after').then(r => r.json())
+            ]);
+
+            if (scenRes.success && scenRes.data) {
+                const select = document.getElementById('scenarioSelect');
+                select.innerHTML = scenRes.data.map(s => `
+                    <option value="${s.scenarioId}">${s.scenarioName} (${s.httpMethod} ${s.endpoint})</option>
+                `).join('');
+            }
+
+            if (repRes.success && repRes.data) {
+                renderComparison(repRes.data);
+            }
+
+            executeLoadTest(); // Auto-run first load test
+        } catch (e) {
+            console.error('Error initializing load test page', e);
+        }
+    }
+
+    async function executeLoadTest() {
+        const scenario = document.getElementById('scenarioSelect').value || 'order_creation';
+        const vus = document.getElementById('vusInput').value;
+        const duration = document.getElementById('durationInput').value;
+
+        try {
+            const res = await fetch(`/api/v1/loadtest/run?scenarioId=${scenario}&virtualUsers=${vus}&durationSeconds=${duration}`, {
+                method: 'POST'
+            });
+            const result = await res.json();
+            if (result.success && result.data) {
+                renderResult(result.data);
+            }
+        } catch (e) {
+            console.error('Error running load test', e);
+        }
+    }
+
+    function renderResult(d) {
+        document.getElementById('resultContainer').style.display = 'block';
+        document.getElementById('resScenarioTitle').innerText = `📊 Benchmark Output: ${d.scenarioName} (${d.virtualUsers} Virtual Users for ${d.durationSeconds}s)`;
+        document.getElementById('resRps').innerText = `${d.requestsPerSecond} req/s`;
+        document.getElementById('resTotalReqs').innerText = `Total Requests: ${d.totalRequests.toLocaleString()}`;
+        document.getElementById('resP95').innerText = `${d.p95LatencyMs} ms`;
+        document.getElementById('resP99').innerText = `P99: ${d.p99LatencyMs} ms | Avg: ${d.avgLatencyMs} ms`;
+        document.getElementById('resErrorRate').innerText = `${d.errorRatePercent}%`;
+        document.getElementById('resSuccessRate').innerText = `Successful: ${d.successfulRequests.toLocaleString()}`;
+        document.getElementById('resCpu').innerText = `CPU: ${d.cpuUsagePercent}%`;
+        document.getElementById('resDb').innerText = `DB Pool: ${d.activeDbConnections} Active | Redis Hit: ${d.redisHitRatePercent}%`;
+
+        document.getElementById('resBottlenecks').innerHTML = d.bottlenecksIdentified.map(b => `<li>${b}</li>`).join('');
+        document.getElementById('resOptimizations').innerHTML = d.optimizationsApplied.map(o => `<li>${o}</li>`).join('');
+    }
+
+    function renderComparison(reports) {
+        const tbody = document.getElementById('comparisonTableBody');
+        tbody.innerHTML = reports.map(r => `
+            <tr>
+                <td style="font-weight: 600;">${r.flowName}</td>
+                <td>
+                    <span class="tag-red">${r.beforeThroughputRps} RPS</span><br>
+                    <small style="color: var(--text-muted);">P95: ${r.beforeP95LatencyMs}ms | Err: ${r.beforeErrorRatePercent}%</small>
+                </td>
+                <td>
+                    <span class="tag-green">${r.afterThroughputRps} RPS</span><br>
+                    <small style="color: var(--text-muted);">P95: ${r.afterP95LatencyMs}ms | Err: ${r.afterErrorRatePercent}%</small>
+                </td>
+                <td style="font-size: 0.8rem; color: #334155;">${r.keyOptimizationImplemented}</td>
+                <td>
+                    ${r.architecturalTakeaways.map(t => `<div style="font-size: 0.75rem; font-weight: 600; color: var(--primary-dark);">✓ ${t}</div>`).join('')}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    initPage();
+</script>
+</body>
+</html>

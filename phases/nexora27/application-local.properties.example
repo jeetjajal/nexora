@@ -1,0 +1,13 @@
+# ============================================================
+# NEXORA - LOCAL CONFIGURATION (GITIGNORED)
+# ============================================================
+# To use your real Google Gemini API Key safely:
+# 1. Copy this file to "application-local.properties" in the project root or src/main/resources/
+# 2. Add your real key below:
+#    GEMINI_API_KEY=YOUR_REAL_GEMINI_API_KEY
+# 3. "application-local.properties" is in .gitignore, so it will NEVER be committed or pushed to GitHub!
+#
+# Alternatively, set an environment variable in your terminal:
+#    $env:GEMINI_API_KEY="YOUR_REAL_GEMINI_API_KEY"
+# ============================================================
+GEMINI_API_KEY=

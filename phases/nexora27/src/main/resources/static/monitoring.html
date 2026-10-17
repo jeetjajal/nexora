@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora - Observability & Metrics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --primary-light: #D1FAE5;
+            --bg-color: #0F172A;
+            --card-bg: #1E293B;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border: #334155;
+            --accent-orange: #F59E0B;
+            --accent-red: #EF4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); line-height: 1.5; padding: 2rem 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+        .badge { background: #3B82F6; color: white; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 9999px; text-transform: uppercase; }
+        h1 { font-size: 1.875rem; font-weight: 700; color: #FFFFFF; }
+        .subtitle { color: var(--text-muted); font-size: 0.95rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
+        .metric-title { font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+        .metric-val { font-size: 1.875rem; font-weight: 700; color: #FFFFFF; }
+        .metric-sub { font-size: 0.75rem; color: var(--primary); margin-top: 0.25rem; font-weight: 500; }
+        .alert-card { background: #1E293B; border-left: 4px solid var(--primary); padding: 1rem; border-radius: 0 8px 8px 0; margin-bottom: 0.75rem; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .alert-critical { border-left-color: var(--accent-red); }
+        .alert-warning { border-left-color: var(--accent-orange); }
+        .btn { background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+        .code-snippet { background: #020617; padding: 0.75rem; border-radius: 6px; font-family: monospace; font-size: 0.8rem; color: #38BDF8; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <h1>Nexora Production Observability</h1>
+                <span class="badge">Phase 26</span>
+            </div>
+            <p class="subtitle">Prometheus Scrapes, Grafana Dashboards, Latency Percentiles (P95/P99) & SRE Alerting</p>
+        </div>
+        <button class="btn" onclick="fetchMetrics()">Refresh Metrics</button>
+    </header>
+
+    <div class="grid-4" id="kpiGrid">
+        <!-- Rendered via JS -->
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">🚨 Active Prometheus Alert Rules (Alertmanager)</h3>
+            <div id="alertsContainer">
+                <!-- Rendered via JS -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">📊 Grafana Production Panels</h3>
+            <ul id="grafanaPanels" style="list-style: none; font-size: 0.85rem; color: var(--text-muted);">
+                <!-- Rendered via JS -->
+            </ul>
+            <div style="margin-top: 1.5rem;">
+                <a href="/actuator/prometheus" target="_blank" style="color: #38BDF8; font-size: 0.85rem; text-decoration: none;">
+                    🔗 View Raw Prometheus Scraping Endpoint (/actuator/prometheus) →
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchMetrics() {
+        try {
+            const [mRes, aRes, gRes] = await Promise.all([
+                fetch('/api/v1/monitoring/metrics').then(r => r.json()),
+                fetch('/api/v1/monitoring/alerts').then(r => r.json()),
+                fetch('/api/v1/monitoring/grafana-config').then(r => r.json())
+            ]);
+
+            if (mRes.success && mRes.data) {
+                renderKpis(mRes.data);
+            }
+            if (aRes.success && aRes.data) {
+                renderAlerts(aRes.data);
+            }
+            if (gRes.success && gRes.data) {
+                renderGrafana(gRes.data);
+            }
+        } catch (e) {
+            console.error('Error fetching metrics', e);
+        }
+    }
+
+    function renderKpis(d) {
+        const grid = document.getElementById('kpiGrid');
+        grid.innerHTML = `
+            <div class="card">
+                <div class="metric-title">Throughput</div>
+                <div class="metric-val">${d.requestsPerSecond} <span style="font-size: 1rem; color: var(--text-muted);">req/s</span></div>
+                <div class="metric-sub">Error Rate: ${d.errorRatePercent}%</div>
+            </div>
+            <div class="card">
+                <div class="metric-title">Latency Percentiles</div>
+                <div class="metric-val">${d.p95LatencyMs} <span style="font-size: 1rem; color: var(--text-muted);">ms (P95)</span></div>
+                <div class="metric-sub">P50: ${d.p50LatencyMs}ms | P99: ${d.p99LatencyMs}ms</div>
+            </div>
+            <div class="card">
+                <div class="metric-title">Redis Cache Hit Rate</div>
+                <div class="metric-val" style="color: #34D399;">${d.redisCacheHitRatePercent}%</div>
+                <div class="metric-sub">Total Ops: ${d.redisTotalRequests.toLocaleString()}</div>
+            </div>
+            <div class="card">
+                <div class="metric-title">Kafka Consumer Lag</div>
+                <div class="metric-val" style="color: #38BDF8;">${d.kafkaConsumerLagRecords} <span style="font-size: 1rem; color: var(--text-muted);">events</span></div>
+                <div class="metric-sub">DB Connections: ${d.activeDbConnections}/${d.maxDbPoolSize} Active</div>
+            </div>
+        `;
+    }
+
+    function renderAlerts(alerts) {
+        const container = document.getElementById('alertsContainer');
+        container.innerHTML = alerts.map(a => `
+            <div class="alert-card ${a.severity === 'CRITICAL' ? 'alert-critical' : 'alert-warning'}">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <strong>${a.alertName}</strong>
+                    <span style="font-size: 0.7rem; font-weight: 700; color: ${a.severity === 'CRITICAL' ? '#F87171' : '#FBBF24'};">${a.severity}</span>
+                </div>
+                <div style="font-size: 0.85rem; color: #CBD5E1;">${a.description}</div>
+                <div class="code-snippet">${a.expression}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderGrafana(g) {
+        const ul = document.getElementById('grafanaPanels');
+        ul.innerHTML = g.panels.map(p => `
+            <li style="padding: 0.4rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="color: var(--primary);">✓</span> ${p}
+            </li>
+        `).join('');
+    }
+
+    fetchMetrics();
+</script>
+</body>
+</html>
