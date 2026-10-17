@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora — Recommended For You (AI Recommendations)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --card-color: #334155;
+            --card-hover: #3b4d66;
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --border: #475569;
+            --badge-bg: rgba(99, 102, 241, 0.15);
+            --badge-color: #a5b4fc;
+            --reason-bg: rgba(245, 158, 11, 0.15);
+            --reason-color: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #182234;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #6366f1, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .phase-badge {
+            font-size: 0.75rem;
+            background: var(--badge-bg);
+            color: var(--badge-color);
+            border: 1px solid var(--primary);
+            padding: 3px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .token-bar {
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .token-input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .token-input-group input {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            flex: 1;
+            outline: none;
+        }
+
+        .token-input-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-sub);
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .sub-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .sub-controls input, .sub-controls select {
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-img-placeholder {
+            height: 150px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            position: relative;
+        }
+
+        .match-score-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .card-content {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .card-store {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .card-desc {
+            font-size: 0.82rem;
+            color: var(--text-sub);
+            line-height: 1.4;
+            margin-bottom: 12px;
+            flex: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .category-tag {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-sub);
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .reason-box {
+            background: var(--reason-bg);
+            border-left: 3px solid var(--reason-color);
+            padding: 6px 10px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.75rem;
+            color: var(--reason-color);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 12px;
+            margin-top: auto;
+        }
+
+        .price-group {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .card-price {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #38bdf8;
+        }
+
+        .card-discount {
+            font-size: 0.75rem;
+            color: #34d399;
+            font-weight: 600;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: var(--text-sub);
+            grid-column: 1 / -1;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: var(--surface-color);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            grid-column: 1 / -1;
+        }
+
+        .empty-state h3 {
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-container">
+            <span class="brand-logo">NEXORA</span>
+            <span class="phase-badge">Phase 20 Recommendation Engine</span>
+        </div>
+        <div class="header-actions">
+            <a href="/chat.html" class="btn btn-outline">🤖 AI Assistant</a>
+            <a href="/tracking.html" class="btn btn-outline">📦 Live Tracking</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Auth Bar -->
+        <div class="token-bar">
+            <div class="token-input-group">
+                <label for="jwtInput" style="font-size: 0.85rem; color: var(--text-sub);">JWT Token:</label>
+                <input type="password" id="jwtInput" placeholder="Paste your Bearer token for personalized recommendations...">
+                <button class="btn" onclick="saveToken()">Save</button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-sub);">
+                Status: <span id="authStatus" style="color: #f59e0b; font-weight: 600;">Guest (Cold-Start Mode)</span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('for-you')">✨ Recommended For You</button>
+            <button class="tab-btn" onclick="switchTab('trending')">🔥 Trending & Popular</button>
+            <button class="tab-btn" onclick="switchTab('fbt')">🍔 Frequently Bought Together</button>
+            <button class="tab-btn" onclick="switchTab('category')">🍕 Category Recommendations</button>
+        </div>
+
+        <!-- Dynamic Controls -->
+        <div class="sub-controls" id="subControls">
+            <!-- Dynamically populated per tab -->
+        </div>
+
+        <!-- Product Grid -->
+        <div class="product-grid" id="productGrid">
+            <div class="loading-state">Loading recommendations...</div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'for-you';
+        let jwtToken = localStorage.getItem('nexora_token') || '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (jwtToken) {
+                document.getElementById('jwtInput').value = jwtToken;
+                document.getElementById('authStatus').textContent = 'Authenticated Customer';
+                document.getElementById('authStatus').style.color = '#10b981';
+            }
+            loadTabContent();
+        });
+
+        function saveToken() {
+            const input = document.getElementById('jwtInput').value.trim();
+            jwtToken = input;
+            if (jwtToken) {
+                localStorage.setItem('nexora_token', jwtToken);
+                document.getElementById('authStatus').textContent = 'Authenticated Customer';
+                document.getElementById('authStatus').style.color = '#10b981';
+            } else {
+                localStorage.removeItem('nexora_token');
+                document.getElementById('authStatus').textContent = 'Guest (Cold-Start Mode)';
+                document.getElementById('authStatus').style.color = '#f59e0b';
+            }
+            loadTabContent();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            loadTabContent();
+        }
+
+        function loadTabContent() {
+            const controls = document.getElementById('subControls');
+            controls.innerHTML = '';
+
+            if (currentTab === 'for-you') {
+                controls.innerHTML = `
+                    <span style="font-size: 0.85rem; color: var(--text-sub);">Shows hyper-personalized items scored from your purchase history, preferred categories, and budget:</span>
+                    <button class="btn" onclick="fetchForYou()">Refresh My Recommendations</button>
+                `;
+                fetchForYou();
+            } else if (currentTab === 'trending') {
+                controls.innerHTML = `
+                    <span style="font-size: 0.85rem; color: var(--text-sub);">Top best-sellers and popular dishes across open restaurants:</span>
+                    <button class="btn" onclick="fetchTrending()">Refresh Trending</button>
+                `;
+                fetchTrending();
+            } else if (currentTab === 'fbt') {
+                controls.innerHTML = `
+                    <label style="font-size: 0.85rem; color: var(--text-sub);">Select Target Product ID:</label>
+                    <input type="number" id="fbtProductId" value="1" min="1" style="width: 90px;">
+                    <button class="btn" onclick="fetchFbt()">Find Co-occurring Items</button>
+                `;
+                fetchFbt();
+            } else if (currentTab === 'category') {
+                controls.innerHTML = `
+                    <label style="font-size: 0.85rem; color: var(--text-sub);">Category:</label>
+                    <select id="catSelect" onchange="fetchCategory()">
+                        <option value="Pizza">Pizza</option>
+                        <option value="Burger">Burger</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Fast Food">Fast Food</option>
+                        <option value="Beverages">Beverages</option>
+                        <option value="Desserts">Desserts</option>
+                    </select>
+                `;
+                fetchCategory();
+            }
+        }
+
+        async function fetchForYou() {
+            renderLoading();
+            try {
+                const headers = {};
+                if (jwtToken) {
+                    headers['Authorization'] = 'Bearer ' + jwtToken;
+                }
+                const res = await fetch('/api/v1/recommendations/for-you?limit=12', { headers });
+                if (!res.ok) {
+                    if (res.status === 401 || res.status === 403) {
+                        renderEmpty('Authentication required for personalized recommendations. Enter your JWT token above, or enjoy the Trending tab!');
+                        return;
+                    }
+                    throw new Error('Failed to fetch recommendations: ' + res.statusText);
+                }
+                const data = await res.json();
+                renderCards(data);
+            } catch (err) {
+                renderEmpty(err.message);
+            }
+        }
+
+        async function fetchTrending() {
+            renderLoading();
+            try {
+                const res = await fetch('/api/v1/recommendations/trending?limit=12');
+                const data = await res.json();
+                renderCards(data);
+            } catch (err) {
+                renderEmpty(err.message);
+            }
+        }
+
+        async function fetchFbt() {
+            renderLoading();
+            const prodId = document.getElementById('fbtProductId')?.value || 1;
+            try {
+                const res = await fetch(`/api/v1/recommendations/frequently-bought-together?productId=${prodId}&limit=6`);
+                const data = await res.json();
+                renderCards(data);
+            } catch (err) {
+                renderEmpty(err.message);
+            }
+        }
+
+        async function fetchCategory() {
+            renderLoading();
+            const cat = document.getElementById('catSelect')?.value || 'Pizza';
+            try {
+                const res = await fetch(`/api/v1/recommendations/category?name=${encodeURIComponent(cat)}&limit=12`);
+                const data = await res.json();
+                renderCards(data);
+            } catch (err) {
+                renderEmpty(err.message);
+            }
+        }
+
+        function renderLoading() {
+            document.getElementById('productGrid').innerHTML = '<div class="loading-state">⚡ Calculating algorithmic & AI match scores...</div>';
+        }
+
+        function renderEmpty(message) {
+            document.getElementById('productGrid').innerHTML = `
+                <div class="empty-state">
+                    <h3>No Recommendations Found</h3>
+                    <p style="color: var(--text-sub); font-size: 0.9rem;">${message}</p>
+                </div>
+            `;
+        }
+
+        function getFoodEmoji(name, cats) {
+            const n = (name + ' ' + (cats ? cats.join(' ') : '')).toLowerCase();
+            if (n.includes('pizza')) return '🍕';
+            if (n.includes('burger')) return '🍔';
+            if (n.includes('pasta') || n.includes('spaghetti')) return '🍝';
+            if (n.includes('coffee') || n.includes('latte')) return '☕';
+            if (n.includes('fries')) return '🍟';
+            if (n.includes('taco')) return '🌮';
+            if (n.includes('sushi')) return '🍣';
+            if (n.includes('cake') || n.includes('dessert')) return '🍰';
+            if (n.includes('salad')) return '🥗';
+            if (n.includes('beverage') || n.includes('drink') || n.includes('shake')) return '🥤';
+            return '🍽️';
+        }
+
+        function renderCards(items) {
+            const grid = document.getElementById('productGrid');
+            if (!items || items.length === 0) {
+                renderEmpty('No products found matching recommendation criteria.');
+                return;
+            }
+
+            grid.innerHTML = items.map(item => {
+                const emoji = getFoodEmoji(item.productName, item.categories);
+                const scorePercent = item.score ? Math.round(item.score * 100) : 85;
+                const discountTag = item.discount && item.discount > 0 ? `<span class="card-discount">${item.discount}% OFF</span>` : '';
+                const categoriesHtml = (item.categories || []).map(c => `<span class="category-tag">${c}</span>`).join('');
+                
+                return `
+                    <div class="product-card">
+                        <div class="card-img-placeholder">
+                            <span>${emoji}</span>
+                            <span class="match-score-badge">${scorePercent}% Match</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="card-store">${item.storeName || 'Nexora Verified Store'}</div>
+                            <h3 class="card-title">${item.productName}</h3>
+                            <p class="card-desc">${item.description || 'Freshly prepared delicious item.'}</p>
+                            
+                            <div class="card-categories">${categoriesHtml}</div>
+
+                            ${item.reason ? `
+                                <div class="reason-box">
+                                    <span>💡</span>
+                                    <span>${item.reason}</span>
+                                </div>
+                            ` : ''}
+
+                            <div class="card-footer">
+                                <div class="price-group">
+                                    <span class="card-price">₹${item.price}</span>
+                                    ${discountTag}
+                                </div>
+                                <button class="btn" style="padding: 6px 12px; font-size: 0.8rem;" onclick="alert('Added ${item.productName} to your cart!')">Add to Cart</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
