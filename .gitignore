@@ -2,4 +2,9 @@
 .idea/
 *.iml
 .env
+*.env*
+application-local.properties
+application-secret.properties
+*.key
+*.secret
 *.log
