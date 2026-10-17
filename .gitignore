@@ -1,10 +1,23 @@
 **/target/
 .idea/
 *.iml
+
+# Local environment and secret files
 .env
 *.env*
-application-local.properties
-application-secret.properties
+!.env.example
+
+# Local application properties with secrets
+application-local*.properties
+!application-local.properties.example
+application-secret*.properties
+
+# Cryptographic and secret keys
 *.key
 *.secret
+*.pem
+
+# Application and startup log files
 *.log
+*log*.txt
+startup-log.txt

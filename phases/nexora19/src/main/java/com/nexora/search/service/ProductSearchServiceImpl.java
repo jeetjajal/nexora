@@ -33,8 +33,11 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.util.*;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Slf4j
 @Service
+@Transactional(readOnly = true)
 public class ProductSearchServiceImpl implements ProductSearchService {
 
     private final ProductRepository productRepository;

@@ -60,13 +60,14 @@ public class GeminiAiClient implements AiClient {
         }
 
         try {
-            String url = String.format("%s/%s:generateContent?key=%s", apiUrl, model, apiKey);
+            String url = String.format("%s/%s:generateContent", apiUrl, model);
 
             ObjectNode requestBody = buildGeminiRequest(userMessage, history);
             String requestJson = objectMapper.writeValueAsString(requestBody);
 
             String responseBody = restClient.post()
                     .uri(url)
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestJson)
                     .retrieve()
@@ -96,8 +97,9 @@ public class GeminiAiClient implements AiClient {
 
             return "I received your message, but no response was generated.";
         } catch (Exception e) {
-            log.error("Gemini API call failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Gemini AI service error: " + e.getMessage(), e);
+            String safeError = sanitizeErrorMessage(e.getMessage());
+            log.error("Gemini API call failed: {}", safeError);
+            throw new RuntimeException("Gemini AI service error: " + safeError);
         }
     }
 
@@ -141,7 +143,7 @@ public class GeminiAiClient implements AiClient {
 
     private String synthesizeFinalResponse(String userMessage, String functionName, String toolResult) {
         try {
-            String url = String.format("%s/%s:generateContent?key=%s", apiUrl, model, apiKey);
+            String url = String.format("%s/%s:generateContent", apiUrl, model);
 
             ObjectNode body = objectMapper.createObjectNode();
             ArrayNode contents = body.putArray("contents");
@@ -155,6 +157,7 @@ public class GeminiAiClient implements AiClient {
 
             String responseBody = restClient.post()
                     .uri(url)
+                    .header("x-goog-api-key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(objectMapper.writeValueAsString(body))
                     .retrieve()
@@ -166,9 +169,21 @@ public class GeminiAiClient implements AiClient {
                 return textPart.asText();
             }
         } catch (Exception ex) {
-            log.warn("Could not synthesize final Gemini response, returning raw tool output: {}", ex.getMessage());
+            log.warn("Could not synthesize final Gemini response, returning raw tool output: {}", sanitizeErrorMessage(ex.getMessage()));
         }
         return toolResult;
+    }
+
+    private String sanitizeErrorMessage(String message) {
+        if (message == null) {
+            return "Unknown error";
+        }
+        String sanitized = message;
+        if (!apiKey.isBlank()) {
+            sanitized = sanitized.replace(apiKey, "[REDACTED_API_KEY]");
+        }
+        sanitized = sanitized.replaceAll("AIza[0-9A-Za-z-_]{35}", "[REDACTED_API_KEY]");
+        return sanitized;
     }
 
     private ObjectNode buildGeminiRequest(String userMessage, List<AiChatMessage> history) {

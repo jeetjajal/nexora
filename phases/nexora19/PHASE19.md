@@ -73,7 +73,7 @@ You do **NOT** need to write or commit your actual API key to Git. Two secure me
 ### Method 1: System / Shell Environment Variable (Recommended)
 Set the key in your terminal or IDE run configuration:
 ```powershell
-$env:GEMINI_API_KEY="AIzaSyYourActualGoogleGeminiKeyHere"
+$env:GEMINI_API_KEY="YOUR_REAL_GEMINI_API_KEY"
 ```
 *(The key exists solely in your machine's session memory, never in any file)*
 
@@ -81,7 +81,7 @@ $env:GEMINI_API_KEY="AIzaSyYourActualGoogleGeminiKeyHere"
 1. Copy `application-local.properties.example` to `application-local.properties` (or `src/main/resources/application-local.properties`).
 2. Add your key inside:
    ```properties
-   GEMINI_API_KEY=AIzaSyYourActualGoogleGeminiKeyHere
+   GEMINI_API_KEY=YOUR_REAL_GEMINI_API_KEY
    ```
 3. `application-local.properties` is strictly declared in `.gitignore` and can **never** be committed or pushed to GitHub.
 
