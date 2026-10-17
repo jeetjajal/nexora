@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexora-production
+  labels:
+    app.kubernetes.io/name: nexora
+    app.kubernetes.io/part-of: nexora-platform
+    environment: production
