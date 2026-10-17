@@ -1,0 +1,165 @@
+version: '3.8'
+
+# ==============================================================================
+# NEXORA MULTI-CONTAINER LOCAL DEVELOPMENT STACK
+# Services:
+#   1. mysql: Persistent relational DB (port 3306)
+#   2. redis: Caching, cart, rate limiting (port 6379)
+#   3. zookeeper: Kafka cluster coordination (port 2181)
+#   4. kafka: Asynchronous event bus (port 9092)
+#   5. elasticsearch: Full-text search engine (port 9200)
+#   6. nexora-backend: Spring Boot application (port 8080)
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. MySQL 8 Database
+  # ----------------------------------------------------------------------------
+  mysql:
+    image: mysql:8.0.35
+    container_name: nexora-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nexora_db}
+      MYSQL_USER: ${MYSQL_USER:-nexora_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-nexora_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - nexora-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ----------------------------------------------------------------------------
+  # 2. Redis Caching & Rate Limiting
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: nexora-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nexora-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # 3. Apache Zookeeper (Kafka Coordination)
+  # ----------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: nexora-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - nexora-net
+
+  # ----------------------------------------------------------------------------
+  # 4. Apache Kafka Message Broker
+  # ----------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: nexora-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - nexora-net
+
+  # ----------------------------------------------------------------------------
+  # 5. Elasticsearch (Search Engine)
+  # ----------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: nexora-elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - nexora-net
+
+  # ----------------------------------------------------------------------------
+  # 6. Nexora Spring Boot Backend
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexora-backend
+    restart: on-failure
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-nexora_db}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-nexora_user}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-nexora_pass}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_ELASTICSEARCH_URIS: http://elasticsearch:9200
+      JWT_SECRET: ${JWT_SECRET:-9a7f8e2d4c6b1a3e5f7a9b2d4e6f8a1c3e5a7b9d2e4f6a8b1c3d5e7f9a2b4c6e}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-rzp_test_mock_id}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-rzp_test_mock_secret}
+    networks:
+      - nexora-net
+
+# ------------------------------------------------------------------------------
+# Persistent Storage Volumes
+# ------------------------------------------------------------------------------
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  es_data:
+    driver: local
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  nexora-net:
+    driver: bridge

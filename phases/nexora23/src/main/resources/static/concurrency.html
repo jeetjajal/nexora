@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora — Advanced Concurrency & Race Condition Simulation</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --card-color: #334155;
+            --card-hover: #3b4d66;
+            --primary: #f59e0b;
+            --primary-hover: #d97706;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --border: #475569;
+            --badge-bg: rgba(245, 158, 11, 0.15);
+            --badge-color: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #182234;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #f59e0b, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .phase-badge {
+            font-size: 0.75rem;
+            background: var(--badge-bg);
+            color: var(--badge-color);
+            border: 1px solid var(--primary);
+            padding: 3px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: #0f172a;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-sub);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--text-main);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            flex: 1;
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(16, 185, 129, 0.05));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .hero-banner h1 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            color: #fbbf24;
+        }
+
+        .hero-banner p {
+            font-size: 0.92rem;
+            color: var(--text-sub);
+            line-height: 1.5;
+            max-width: 900px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--surface-color);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            background: #0b1120;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--primary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-box {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #38bdf8;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .verification-badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th {
+            background: #182234;
+            color: var(--text-sub);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-container">
+            <span class="brand-logo">NEXORA</span>
+            <span class="phase-badge">Phase 21 Concurrency Engine</span>
+        </div>
+        <div class="header-actions">
+            <a href="/recommendations.html" class="btn btn-outline">✨ Recommendations</a>
+            <a href="/chat.html" class="btn btn-outline">🤖 AI Assistant</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Hero Explanation -->
+        <div class="hero-banner">
+            <h1>⚡ High-Concurrency Flash Sale Benchmark</h1>
+            <p>
+                Simulate the classic e-commerce race condition: <strong>100 users buy simultaneously when stock = 1</strong>.
+                Witness how database-level pessimistic locking, optimistic locking, atomic updates, and Redis distributed locking
+                guarantee that <strong>exactly 1 user succeeds</strong> while 99 receive graceful "Out of Stock" rejections with <strong>zero overselling</strong>.
+            </p>
+        </div>
+
+        <div class="grid-2">
+            <!-- Controls Form -->
+            <div class="card">
+                <h2>⚙️ Benchmark Configuration</h2>
+
+                <div class="form-group">
+                    <label>Product ID to Test:</label>
+                    <input type="number" id="productId" value="1" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>Initial Stock Before Test:</label>
+                    <input type="number" id="initialStock" value="1" min="1" max="100">
+                    <small style="color: var(--text-sub); font-size: 0.75rem;">Set to 1 to simulate extreme high-contention flash sale</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Concurrent Shoppers (Threads):</label>
+                    <input type="number" id="totalThreads" value="100" min="2" max="200">
+                    <small style="color: var(--text-sub); font-size: 0.75rem;">All threads released simultaneously via Java CountDownLatch</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Concurrency Strategy:</label>
+                    <select id="strategy">
+                        <option value="PESSIMISTIC_LOCK">Pessimistic Lock (SELECT ... FOR UPDATE)</option>
+                        <option value="OPTIMISTIC_LOCK">Optimistic Lock (@Version)</option>
+                        <option value="ATOMIC_UPDATE">Atomic Conditional SQL UPDATE</option>
+                        <option value="DISTRIBUTED_LOCK">Redis Distributed Lock</option>
+                    </select>
+                </div>
+
+                <button class="btn" style="width: 100%; padding: 12px; font-size: 1rem; justify-content: center;" onclick="runSimulation()" id="runBtn">
+                    🔥 Launch 100-User Flash Sale Simulation
+                </button>
+            </div>
+
+            <!-- Live Results -->
+            <div class="card">
+                <h2>📊 Live Benchmark Results</h2>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="resSuccessful" style="color: #10b981;">0</div>
+                        <div class="stat-label">Successful Purchases</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="resFailed" style="color: #ef4444;">0</div>
+                        <div class="stat-label">Out-of-Stock Rejected</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="resFinalStock" style="color: #38bdf8;">0</div>
+                        <div class="stat-label">Final Database Stock</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="resThroughput" style="color: #f59e0b;">0</div>
+                        <div class="stat-label">Throughput (Req/sec)</div>
+                    </div>
+                </div>
+
+                <div id="explanationBox" style="font-size: 0.85rem; color: var(--text-sub); line-height: 1.5; padding: 10px; background: #0b1120; border-radius: 8px; border: 1px solid var(--border);">
+                    Click "Launch Flash Sale Simulation" to run 100 concurrent threads against the database.
+                </div>
+
+                <div class="verification-badge" id="verificationBadge" style="display: none;">
+                    <span>🛡️</span>
+                    <span id="badgeText">ZERO OVERSELLING GUARANTEED: Stock never went negative!</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Strategy Architecture Table -->
+        <div class="card">
+            <h2>📚 Architectural Strategy Comparison</h2>
+            <div class="table-container">
+                <table id="strategiesTable">
+                    <thead>
+                        <tr>
+                            <th>Strategy</th>
+                            <th>Underlying Mechanism</th>
+                            <th>Isolation Level</th>
+                            <th>Best Used For</th>
+                            <th>Trade-offs</th>
+                        </tr>
+                    </thead>
+                    <tbody id="strategiesBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-sub);">Loading strategies...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStrategies();
+        });
+
+        async function loadStrategies() {
+            try {
+                const res = await fetch('/api/v1/concurrency/strategies');
+                const data = await res.json();
+                const tbody = document.getElementById('strategiesBody');
+                tbody.innerHTML = data.map(s => `
+                    <tr>
+                        <td style="font-weight: 700; color: #fbbf24;">${s.name}</td>
+                        <td style="font-family: monospace; font-size: 0.8rem; color: #38bdf8;">${s.mechanism}</td>
+                        <td>${s.isolationLevel}</td>
+                        <td>${s.bestUsedFor}</td>
+                        <td style="color: var(--text-sub);">${s.tradeOffs}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error('Error loading strategies:', err);
+            }
+        }
+
+        async function runSimulation() {
+            const btn = document.getElementById('runBtn');
+            const pId = parseInt(document.getElementById('productId').value) || 1;
+            const stock = parseInt(document.getElementById('initialStock').value) || 1;
+            const threads = parseInt(document.getElementById('totalThreads').value) || 100;
+            const strat = document.getElementById('strategy').value;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Executing 100 Concurrent Threads...';
+
+            try {
+                const res = await fetch('/api/v1/concurrency/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        productId: pId,
+                        initialStock: stock,
+                        totalThreads: threads,
+                        strategy: strat
+                    })
+                });
+
+                if (!res.ok) {
+                    throw new Error('Simulation failed: ' + res.statusText);
+                }
+
+                const result = await res.json();
+                document.getElementById('resSuccessful').textContent = result.successfulPurchases;
+                document.getElementById('resFailed').textContent = result.failedPurchases;
+                document.getElementById('resFinalStock').textContent = result.finalStock;
+                document.getElementById('resThroughput').textContent = result.throughputReqPerSec;
+                document.getElementById('explanationBox').textContent = result.explanation;
+
+                const badge = document.getElementById('verificationBadge');
+                badge.style.display = 'flex';
+                if (result.oversellingPrevented) {
+                    badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                    badge.style.borderColor = '#10b981';
+                    badge.style.color = '#10b981';
+                    document.getElementById('badgeText').textContent = '✅ ZERO OVERSELLING GUARANTEED: Stock never went negative!';
+                } else {
+                    badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    badge.style.borderColor = '#ef4444';
+                    badge.style.color = '#ef4444';
+                    document.getElementById('badgeText').textContent = '⚠️ OVERSELLING DETECTED!';
+                }
+            } catch (err) {
+                alert('Error running simulation: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔥 Launch 100-User Flash Sale Simulation';
+            }
+        }
+    </script>
+</body>
+</html>
