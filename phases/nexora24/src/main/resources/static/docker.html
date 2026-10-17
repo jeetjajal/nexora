@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora - Docker Architecture & Topology</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10B981;
+            --primary-dark: #059669;
+            --primary-light: #D1FAE5;
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border: #E2E8F0;
+            --docker-blue: #0ea5e9;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); line-height: 1.5; padding: 2rem 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .badge { background: #E0F2FE; color: #0369A1; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 9999px; text-transform: uppercase; }
+        h1 { font-size: 1.875rem; font-weight: 700; color: #0F172A; }
+        .subtitle { color: var(--text-muted); font-size: 0.95rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .card-title { font-size: 1.125rem; font-weight: 600; }
+        .port-pill { background: #FEF3C7; color: #92400E; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px; }
+        .health-badge { background: #DEF7EC; color: #03543F; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 6px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; }
+        .info-label { color: var(--text-muted); font-weight: 500; }
+        .info-val { font-weight: 600; font-family: monospace; font-size: 0.8rem; }
+        .concept-card { border-left: 4px solid var(--primary); margin-bottom: 1rem; padding: 1rem; background: #fff; border-radius: 0 8px 8px 0; border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .concept-title { font-weight: 600; font-size: 1rem; color: #0F172A; margin-bottom: 0.25rem; }
+        .concept-def { font-size: 0.875rem; color: #334155; margin-bottom: 0.5rem; }
+        .concept-best { font-size: 0.8rem; color: var(--primary-dark); font-weight: 500; }
+        .code-box { background: #0F172A; color: #38BDF8; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; overflow-x: auto; margin-top: 1rem; }
+        .btn { background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.875rem; transition: background 0.2s; }
+        .btn:hover { background: var(--primary-dark); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <h1>Nexora Docker Infrastructure</h1>
+                <span class="badge">Phase 23</span>
+            </div>
+            <p class="subtitle">Multi-Container Architecture, Docker Compose Orchestration & Production Security Topology</p>
+        </div>
+        <button class="btn" onclick="fetchTopology()">Refresh Topology</button>
+    </header>
+
+    <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">🐳 Active Container Stack (docker-compose)</h2>
+    <div class="grid-3" id="containersGrid">
+        <!-- Rendered via JS -->
+    </div>
+
+    <h2 style="font-size: 1.25rem; margin-bottom: 1rem;">💡 Core Containerization Fundamentals</h2>
+    <div id="conceptsList">
+        <!-- Rendered via JS -->
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+        <h3 style="margin-bottom: 0.75rem;">🚀 Quick Local Development Commands</h3>
+        <p style="font-size: 0.875rem; color: var(--text-muted);">Run the full Nexora stack locally with isolated networking and persistent volumes:</p>
+        <div class="code-box">
+# 1. Copy sample environment file<br>
+cp .env.example .env<br><br>
+# 2. Build backend container & start entire stack in detached mode<br>
+docker compose up -d --build<br><br>
+# 3. View live logs and container health<br>
+docker compose ps<br>
+docker compose logs -f backend<br><br>
+# 4. Gracefully tear down stack and preserve persistent volumes<br>
+docker compose down
+        </div>
+    </div>
+</div>
+
+<script>
+    async function fetchTopology() {
+        try {
+            const res = await fetch('/api/v1/docker/topology');
+            const result = await res.json();
+            if (result.success && result.data) {
+                renderContainers(result.data.containers);
+                renderConcepts(result.data.concepts);
+            }
+        } catch (e) {
+            console.error('Error fetching topology', e);
+        }
+    }
+
+    function renderContainers(containers) {
+        const grid = document.getElementById('containersGrid');
+        grid.innerHTML = containers.map(c => `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">${c.containerName}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">${c.role}</div>
+                    </div>
+                    <span class="health-badge">${c.status}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Base Image:</span>
+                    <span class="info-val">${c.image}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Port Binding:</span>
+                    <span class="port-pill">${c.portMapping}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Storage Volume:</span>
+                    <span class="info-val">${c.volumeMount}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Memory Limit:</span>
+                    <span class="info-val">${c.memoryLimit}</span>
+                </div>
+                <div style="margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-muted);">
+                    <strong>Healthcheck:</strong> <code>${c.healthcheck}</code>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderConcepts(concepts) {
+        const list = document.getElementById('conceptsList');
+        list.innerHTML = concepts.map(c => `
+            <div class="concept-card">
+                <div class="concept-title">${c.concept}</div>
+                <div class="concept-def">${c.definition}</div>
+                <div style="font-size: 0.8rem; color: #475569; margin-bottom: 0.25rem;"><strong>Why it matters:</strong> ${c.whyItMatters}</div>
+                <div class="concept-best"><strong>SDE Best Practice:</strong> ${c.bestPractice}</div>
+            </div>
+        `).join('');
+    }
+
+    fetchTopology();
+</script>
+</body>
+</html>
