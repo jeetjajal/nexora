@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 
 @Configuration
-@ConditionalOnProperty(name = "nexora.search.elasticsearch.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "nexora.search.elasticsearch.enabled", havingValue = "true")
 @EnableElasticsearchRepositories(basePackages = "com.nexora.search.repository")
 public class ElasticsearchConfig {
 }

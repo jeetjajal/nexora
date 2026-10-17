@@ -89,6 +89,7 @@ public class KafkaConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "spring.kafka.admin.auto-create", havingValue = "true")
     public NewTopic orderEventsTopic() {
         return TopicBuilder.name(KafkaTopicConstants.ORDER_EVENTS_TOPIC)
                 .partitions(3)
@@ -97,6 +98,7 @@ public class KafkaConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "spring.kafka.admin.auto-create", havingValue = "true")
     public NewTopic paymentEventsTopic() {
         return TopicBuilder.name(KafkaTopicConstants.PAYMENT_EVENTS_TOPIC)
                 .partitions(3)
@@ -105,6 +107,7 @@ public class KafkaConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "spring.kafka.admin.auto-create", havingValue = "true")
     public NewTopic deliveryEventsTopic() {
         return TopicBuilder.name(KafkaTopicConstants.DELIVERY_EVENTS_TOPIC)
                 .partitions(3)
@@ -113,6 +116,7 @@ public class KafkaConfig {
     }
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "spring.kafka.admin.auto-create", havingValue = "true")
     public NewTopic deadLetterTopic() {
         return TopicBuilder.name(KafkaTopicConstants.DEAD_LETTER_TOPIC)
                 .partitions(3)
