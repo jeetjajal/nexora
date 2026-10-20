@@ -131,6 +131,8 @@ public class SecurityConfig {
                                 // PaymentWebhookController's javadoc for the full reasoning.
                                 "/api/v1/payments/webhook",
                                 // PHASE 17: WebSocket handshake and tracking dashboard
+                                "/",
+                                "/index.html",
                                 "/ws-nexora/**",
                                 "/tracking.html",
                                 "/static/**",
