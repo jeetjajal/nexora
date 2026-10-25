@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="100%" height="100%">
+  <defs>
+    <linearGradient id="logoLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D8F36A" />
+      <stop offset="100%" stop-color="#9DE036" />
+    </linearGradient>
+    <linearGradient id="logoGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E8254" />
+      <stop offset="100%" stop-color="#176B45" />
+    </linearGradient>
+  </defs>
+
+  <!-- Symbol on Left -->
+  <g transform="translate(4, 5) scale(0.7)">
+    <path d="M18 82V28C18 22.477 22.477 18 28 18H32C35.314 18 38 20.686 38 24V82H18Z" fill="url(#logoGreenGrad)" />
+    <path d="M30 20L72 68C76 72.5 82 69 82 63V22C82 19.791 80.209 18 78 18H74C71.791 18 70 19.791 70 22V52L36 18C34 16 30 17 30 20Z" fill="url(#logoLeafGrad)" />
+    <path d="M62 82V38C62 34.686 64.686 32 68 32H72C77.523 32 82 36.477 82 42V82H62Z" fill="url(#logoGreenGrad)" />
+    <circle cx="82" cy="18" r="6" fill="#D8F36A" />
+  </g>
+
+  <!-- Typography: NEXORA -->
+  <text x="88" y="47" font-family="'Inter', 'Segoe UI', sans-serif" font-size="34" font-weight="900" fill="#173327" letter-spacing="1.5">NEXORA</text>
+  
+  <!-- Subtitle Tagline: 10-MIN QUICK COMMERCE -->
+  <rect x="88" y="55" width="8" height="8" rx="2" fill="#D8F36A" />
+  <text x="102" y="62" font-family="'Inter', 'Segoe UI', sans-serif" font-size="9" font-weight="700" fill="#68776D" letter-spacing="2">10-MIN QUICK COMMERCE</text>
+</svg>
