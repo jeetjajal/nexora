@@ -1,7 +1,10 @@
 package com.nexora.user.mapper;
 
+import com.nexora.role.entity.Role;
 import com.nexora.user.dto.UserResponse;
 import com.nexora.user.entity.User;
+
+import java.util.stream.Collectors;
 
 /**
  * WHAT IS A MAPPER?
@@ -27,7 +30,9 @@ public class UserMapper {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .status(user.getStatus())
-                .role(user.getRole())
+                .roles(user.getRoles().stream()
+                        .map(role -> role.getName().name())
+                        .collect(Collectors.toSet()))
                 .createdAt(user.getCreatedAt())
                 .build();
     }

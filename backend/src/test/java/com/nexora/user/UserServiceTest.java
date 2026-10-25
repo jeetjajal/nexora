@@ -1,6 +1,9 @@
 package com.nexora.user;
 
 import com.nexora.exception.DuplicateEmailException;
+import com.nexora.role.entity.Role;
+import com.nexora.role.entity.RoleName;
+import com.nexora.role.repository.RoleRepository;
 import com.nexora.user.dto.RegisterRequest;
 import com.nexora.user.dto.UserResponse;
 import com.nexora.user.entity.User;
@@ -15,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,10 +44,14 @@ class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private RoleRepository roleRepository;
+
     @InjectMocks
     private UserService userService;
 
     private RegisterRequest registerRequest;
+    private Role customerRole;
 
     @BeforeEach
     void setUp() {
@@ -53,14 +61,18 @@ class UserServiceTest {
                 "SecurePass123",
                 "9876543210"
         );
+
+        customerRole = Role.builder().id(1L).name(RoleName.CUSTOMER).build();
     }
 
     @Test
     @DisplayName("Should register a new user successfully when email is not taken")
     void shouldRegisterUserSuccessfully() {
-        // Arrange: pretend the email doesn't exist yet, and pretend
-        // save() returns a fully-populated User (as MySQL would).
+        // Arrange: pretend the email doesn't exist yet, pretend the
+        // CUSTOMER role is already seeded (DataSeeder's job in real
+        // life), and pretend save() returns a fully-populated User.
         when(userRepository.existsByEmail(registerRequest.getEmail())).thenReturn(false);
+        when(roleRepository.findByName(RoleName.CUSTOMER)).thenReturn(java.util.Optional.of(customerRole));
 
         User savedUser = User.builder()
                 .id(1L)
@@ -69,7 +81,7 @@ class UserServiceTest {
                 .password("hashed-password")
                 .phone(registerRequest.getPhone())
                 .status("ACTIVE")
-                .role("CUSTOMER")
+                .roles(Set.of(customerRole))
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -83,7 +95,7 @@ class UserServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(1L);
         assertThat(response.getEmail()).isEqualTo("aditi@example.com");
-        assertThat(response.getRole()).isEqualTo("CUSTOMER");
+        assertThat(response.getRoles()).containsExactly("CUSTOMER");
 
         // Verify save() was actually called exactly once with a User object
         verify(userRepository, times(1)).save(any(User.class));
@@ -109,6 +121,7 @@ class UserServiceTest {
     void shouldHashPasswordBeforeSaving() {
         // Arrange
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(roleRepository.findByName(RoleName.CUSTOMER)).thenReturn(java.util.Optional.of(customerRole));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
