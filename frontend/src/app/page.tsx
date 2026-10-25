@@ -12,8 +12,9 @@ import { CheckoutModal } from '@/components/customer/CheckoutModal';
 import { OrderTrackingModal } from '@/components/customer/OrderTrackingModal';
 import { AIChatbot } from '@/components/customer/AIChatbot';
 import { DeliveryApp } from '@/components/delivery/DeliveryApp';
-import { ControlTower } from '@/components/admin/ControlTower';
+import { SuperAdminDashboard } from '@/components/admin/SuperAdminDashboard';
 import { StoreOps } from '@/components/store/StoreOps';
+import { WelcomeModal } from '@/components/common/WelcomeModal';
 import { PRODUCTS } from '@/data/products';
 import { CATEGORIES } from '@/data/categories';
 import { Bot, Sparkles, ShieldCheck, Heart, Truck, RefreshCw } from 'lucide-react';
@@ -28,6 +29,8 @@ export default function HomePage() {
     getCartTotal,
     setIsCartOpen,
   } = useApp();
+
+  const [isWelcomeOpen, setIsWelcomeOpen] = React.useState(false);
 
   // Filter products by selectedCategory or searchQuery
   const filteredProducts = PRODUCTS.filter((p) => {
@@ -163,7 +166,7 @@ export default function HomePage() {
       )}
 
       {role === 'delivery' && <DeliveryApp />}
-      {role === 'admin' && <ControlTower />}
+      {role === 'admin' && <SuperAdminDashboard />}
       {role === 'store' && <StoreOps />}
 
       {/* 3. Global Floating AI Assistant Button */}
@@ -200,6 +203,7 @@ export default function HomePage() {
       <CheckoutModal />
       <OrderTrackingModal />
       <AIChatbot />
+      <WelcomeModal isOpen={isWelcomeOpen} onClose={() => setIsWelcomeOpen(false)} />
     </div>
   );
 }
