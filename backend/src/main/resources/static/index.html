@@ -3,1164 +3,270 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexora — All-in-One Quick-Commerce & AI Master Platform</title>
+    <title>NEXORA — 10-Minute Quick Commerce Platform API Engine</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #10b981;
-            --primary-dark: #059669;
-            --primary-light: #34d399;
-            --bg-dark: #090d16;
-            --sidebar-bg: #0d1322;
-            --sidebar-border: #1a2333;
-            --card-bg: #111827;
-            --card-border: #1f293d;
-            --card-hover: #1e293b;
-            --text-main: #f9fafb;
-            --text-muted: #94a3b8;
-            --accent-cyan: #06b6d4;
-            --accent-purple: #8b5cf6;
-            --accent-amber: #f59e0b;
-            --accent-rose: #f43f5e;
-            --accent-blue: #3b82f6;
+            --color-primary: #176B45;
+            --color-primary-hover: #125638;
+            --color-accent: #D8F36A;
+            --color-bg: #F7F8F2;
+            --color-text: #173327;
+            --color-surface: #FFFFFF;
+            --color-border: #E3E8DE;
+            --color-muted: #68776D;
+            --radius-card: 16px;
+            --radius-button: 12px;
+            --shadow-card: 0 4px 16px rgba(23, 51, 39, 0.06);
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
         }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+            background-color: var(--color-bg);
+            color: var(--color-text);
             min-height: 100vh;
-            display: flex;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 15% 15%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
-        }
-
-        /* App Wrapper with Sidebar + Main Content */
-        .app-wrapper {
-            display: flex;
-            width: 100vw;
-            min-height: 100vh;
-        }
-
-        /* Sidebar Styling (Nagrik Seva AI inspired) */
-        .sidebar {
-            width: 280px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            z-index: 50;
-            transition: all 0.3s ease;
-            overflow-y: auto;
-        }
-
-        .sidebar-header {
-            padding: 1.5rem 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            border-bottom: 1px solid var(--sidebar-border);
-            background: rgba(13, 19, 34, 0.85);
-            backdrop-filter: blur(8px);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .logo-icon {
-            width: 42px;
-            height: 42px;
-            background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
-            border-radius: 12px;
-            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
-            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-            flex-shrink: 0;
+            padding: 2rem 1rem;
         }
 
-        .logo-text h1 {
-            font-size: 1.3rem;
-            font-weight: 800;
+        .container {
+            max-width: 720px;
+            width: 100%;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--color-primary);
+            color: #ffffff;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .logo-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .brand-title {
+            font-size: 2rem;
+            font-weight: 900;
             letter-spacing: -0.5px;
-            background: linear-gradient(to right, #ffffff, #cbd5e1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .logo-text p {
-            font-size: 0.72rem;
-            color: var(--primary-light);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 700;
-        }
-
-        .sidebar-section-title {
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            font-weight: 800;
-            color: #64748b;
-            padding: 1.25rem 1.25rem 0.5rem;
-        }
-
-        .nav-list {
-            list-style: none;
-            padding: 0 0.75rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .nav-item-btn {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.65rem 0.9rem;
-            border-radius: 10px;
-            color: var(--text-muted);
-            background: transparent;
-            border: 1px solid transparent;
-            font-size: 0.88rem;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s ease;
-            text-decoration: none;
-        }
-
-        .nav-item-btn:hover {
             color: #ffffff;
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.08);
-            transform: translateX(2px);
         }
 
-        .nav-item-btn.active {
-            color: #ffffff;
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 182, 212, 0.12));
-            border-color: rgba(16, 185, 129, 0.35);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-        }
-
-        .nav-item-btn.active .nav-icon {
-            transform: scale(1.15);
-        }
-
-        .nav-icon {
-            font-size: 1.15rem;
-            transition: transform 0.2s;
-            flex-shrink: 0;
-            width: 22px;
-            text-align: center;
-        }
-
-        .nav-badge {
-            margin-left: auto;
-            font-size: 0.65rem;
-            padding: 0.15rem 0.45rem;
-            border-radius: 6px;
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .badge-live {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--primary-light);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .sidebar-footer {
-            margin-top: auto;
-            padding: 1.25rem;
-            border-top: 1px solid var(--sidebar-border);
+        .brand-badge {
+            display: inline-block;
+            background: var(--color-accent);
+            color: var(--color-text);
             font-size: 0.75rem;
-            color: #64748b;
-            background: rgba(13, 19, 34, 0.5);
-        }
-
-        /* Main Workspace Container */
-        .main-workspace {
-            margin-left: 280px;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            width: calc(100vw - 280px);
-        }
-
-        /* Top Header Bar */
-        .topbar {
-            height: 68px;
-            background: rgba(17, 24, 39, 0.85);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--card-border);
-            padding: 0 1.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 40;
-        }
-
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
-
-        .breadcrumb span.current-title {
-            color: #ffffff;
-            font-weight: 700;
-        }
-
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            background: rgba(16, 185, 129, 0.12);
-            color: var(--primary-light);
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            padding: 0.35rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.78rem;
-            font-weight: 600;
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            background-color: var(--primary);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--primary);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.85); }
-        }
-
-        .btn-action {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.45rem 0.9rem;
-            border-radius: 8px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            color: #f1f5f9;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .btn-action:hover {
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateY(-1px);
-        }
-
-        /* Workspace Content Body */
-        .content-body {
-            flex: 1;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        /* View Panels */
-        .view-panel {
-            display: none;
-            width: 100%;
-            animation: fadeIn 0.25s ease-in-out;
-        }
-
-        .view-panel.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Seamless Embedded Iframe Container */
-        .frame-wrapper {
-            width: 100%;
-            height: calc(100vh - 108px);
-            background: #0b1120;
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-            position: relative;
-        }
-
-        .frame-loader {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #0b1120;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            z-index: 5;
-            transition: opacity 0.3s;
-        }
-
-        .spinner {
-            width: 36px;
-            height: 36px;
-            border: 3px solid rgba(16, 185, 129, 0.2);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        iframe.module-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
-            display: block;
-        }
-
-        /* Overview Hub Styles */
-        .container-inner {
-            max-width: 1320px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .hero {
-            text-align: center;
-            margin-bottom: 2.5rem;
-            padding: 2.5rem 1.5rem;
-            background: linear-gradient(180deg, rgba(17, 24, 39, 0.8), rgba(17, 24, 39, 0.3));
-            border: 1px solid var(--card-border);
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cyan), transparent);
-        }
-
-        .hero h2 {
-            font-size: 2.4rem;
             font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1.05rem;
-            color: var(--text-muted);
-            max-width: 820px;
-            margin: 0 auto 1.75rem;
-        }
-
-        .tech-tags {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 0.5rem;
-            margin-bottom: 1.75rem;
-        }
-
-        .tech-tag {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #e2e8f0;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 0.3rem 0.75rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .diag-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .diag-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 14px;
-            padding: 1.2rem;
-            display: flex;
-            align-items: center;
-            gap: 0.9rem;
-        }
-
-        .diag-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .diag-info h4 {
-            font-size: 0.72rem;
-            color: var(--text-muted);
             text-transform: uppercase;
-            font-weight: 700;
-        }
-
-        .diag-info p {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #f1f5f9;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-bottom: 1.5rem;
-        }
-
-        .section-header h3 {
-            font-size: 1.5rem;
-            font-weight: 800;
-        }
-
-        .section-header p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-
-        .modules-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-            gap: 1.35rem;
-            margin-bottom: 3rem;
-        }
-
-        .module-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 18px;
-            padding: 1.6rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            transition: all 0.25s ease;
-            cursor: pointer;
-        }
-
-        .module-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(16, 185, 129, 0.4);
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-            background: var(--card-hover);
-        }
-
-        .card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .card-badge {
-            font-size: 0.72rem;
-            font-weight: 700;
-            padding: 0.2rem 0.65rem;
+            letter-spacing: 1.5px;
+            padding: 0.25rem 0.75rem;
             border-radius: 9999px;
-            text-transform: uppercase;
+            margin-top: 0.5rem;
         }
 
-        .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--primary-light); border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-purple { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); }
-        .badge-blue { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge-amber { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.3); }
-        .badge-rose { background: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3); }
-        .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3); }
-
-        .card-icon {
-            font-size: 1.85rem;
-        }
-
-        .module-card h4 {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #ffffff;
-        }
-
-        .module-card p {
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            margin-bottom: 1.2rem;
+        .header p {
+            font-size: 0.95rem;
+            color: rgba(255, 255, 255, 0.85);
+            margin-top: 0.75rem;
             line-height: 1.5;
         }
 
-        .card-features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem;
-            margin-bottom: 1.35rem;
+        .body-content {
+            padding: 2rem;
         }
 
-        .card-feature-pill {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            font-size: 0.7rem;
-            font-family: 'JetBrains Mono', monospace;
-            padding: 0.18rem 0.45rem;
-            border-radius: 6px;
-            color: #cbd5e1;
+        .launch-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
 
-        .card-footer {
+        @media (max-width: 600px) {
+            .launch-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .launch-card {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-button);
+            padding: 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            background: #ffffff;
             display: flex;
-            align-items: center;
+            flex-direction: column;
             justify-content: space-between;
-            padding-top: 0.9rem;
-            border-top: 1px solid var(--card-border);
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--primary-light);
         }
 
-        /* Search & API Explorer */
-        .console-box {
-            background: #0b1120;
-            border: 1px solid var(--card-border);
-            border-radius: 18px;
-            padding: 1.75rem;
-            margin-bottom: 2.5rem;
+        .launch-card:hover {
+            border-color: var(--color-primary);
+            box-shadow: 0 6px 20px rgba(23, 107, 69, 0.1);
+            transform: translateY(-2px);
         }
 
-        .search-bar-wrap {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+        .card-primary {
+            background: #f0f7f2;
+            border-color: #c7e3ce;
         }
 
-        .search-input {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 0.75rem 1.1rem;
-            color: #ffffff;
-            font-size: 0.92rem;
-            outline: none;
-        }
-
-        .search-input:focus {
-            border-color: var(--primary);
-        }
-
-        .results-box {
-            background: rgba(0, 0, 0, 0.35);
-            border: 1px solid var(--card-border);
-            border-radius: 10px;
-            padding: 1.1rem;
-            min-height: 110px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.82rem;
-            color: #cbd5e1;
-            max-height: 250px;
-            overflow-y: auto;
-        }
-
-        /* Floating AI Trigger Button */
-        .floating-ai-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 28px;
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
-            color: #ffffff;
-            border: none;
-            padding: 0.85rem 1.35rem;
-            border-radius: 9999px;
+        .card-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--color-primary);
+            margin-bottom: 0.25rem;
             display: flex;
             align-items: center;
-            gap: 0.65rem;
+            gap: 0.5rem;
+        }
+
+        .card-desc {
+            font-size: 0.8rem;
+            color: var(--color-muted);
+            line-height: 1.4;
+        }
+
+        .card-cta {
+            margin-top: 1rem;
+            font-size: 0.8rem;
             font-weight: 700;
-            font-size: 0.9rem;
-            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
-            cursor: pointer;
-            z-index: 60;
-            transition: all 0.25s;
+            color: var(--color-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
         }
 
-        .floating-ai-btn:hover {
-            transform: scale(1.05) translateY(-2px);
-            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.6);
+        .api-status-box {
+            background: #fafbf9;
+            border: 1px solid var(--color-border);
+            border-radius: 10px;
+            padding: 1rem;
+            font-size: 0.82rem;
         }
 
-        @media (max-width: 900px) {
-            .sidebar { transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-            .main-workspace { margin-left: 0; width: 100vw; }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.35rem 0;
+            color: var(--color-muted);
+        }
+
+        .status-row strong {
+            color: var(--color-text);
+        }
+
+        .pill-live {
+            color: var(--color-primary);
+            font-weight: 700;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--color-muted);
+            margin-top: 1.5rem;
         }
     </style>
 </head>
 <body>
-
-<div class="app-wrapper">
-
-    <!-- Left Sidebar Navigation (Nagrik Seva AI Unified Style) -->
-    <aside class="sidebar" id="appSidebar">
-        <div class="sidebar-header">
-            <div class="logo-icon">⚡</div>
-            <div class="logo-text">
-                <h1>NEXORA</h1>
-                <p>Universal AI Hub</p>
+    <div class="container">
+        <div class="header">
+            <div class="logo-wrap">
+                <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 82V28C18 22.477 22.477 18 28 18H32C35.314 18 38 20.686 38 24V82H18Z" fill="#FFFFFF"/>
+                    <path d="M30 20L72 68C76 72.5 82 69 82 63V22C82 19.791 80.209 18 78 18H74C71.791 18 70 19.791 70 22V52L36 18C34 16 30 17 30 20Z" fill="#D8F36A"/>
+                    <path d="M62 82V38C62 34.686 64.686 32 68 32H72C77.523 32 82 36.477 82 42V82H62Z" fill="#FFFFFF"/>
+                    <circle cx="82" cy="18" r="6" fill="#D8F36A"/>
+                </svg>
+                <span class="brand-title">NEXORA</span>
             </div>
+            <div>
+                <span class="brand-badge">Quick Commerce, Simplified</span>
+            </div>
+            <p>10-Minute Rapid Grocery Delivery Platform &amp; Enterprise REST Engine</p>
         </div>
 
-        <div class="sidebar-section-title">Core Operations</div>
-        <ul class="nav-list">
-            <li>
-                <button class="nav-item-btn active" onclick="switchTab('overview', 'Master Hub', this)">
-                    <span class="nav-icon">🏠</span>
-                    <span>Master Overview</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('chat.html', 'AI Assistant Chat (Phase 19)', this)">
-                    <span class="nav-icon">🤖</span>
-                    <span>AI Shopping Chat</span>
-                    <span class="nav-badge badge-live">Gemini</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('tracking.html', 'Live GPS Tracking (Phase 17)', this)">
-                    <span class="nav-icon">🗺️</span>
-                    <span>Live GPS Tracking</span>
-                    <span class="nav-badge badge-live">STOMP</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('concurrency.html', 'Flash-Sale Simulator (Phase 21)', this)">
-                    <span class="nav-icon">⚡</span>
-                    <span>Flash-Sale Concurrency</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('recommendations.html', 'AI Recommendations (Phase 20)', this)">
-                    <span class="nav-icon">✨</span>
-                    <span>AI Recommendations</span>
-                </button>
-            </li>
-        </ul>
+        <div class="body-content">
+            <div class="launch-grid">
+                <a href="http://localhost:3000" class="launch-card card-primary">
+                    <div>
+                        <div class="card-title">🛒 Customer Storefront</div>
+                        <div class="card-desc">Experience the Blinkit-style 10-minute grocery shopping experience, 31 categories, live cart, and order tracking.</div>
+                    </div>
+                    <div class="card-cta">Launch Storefront &rarr;</div>
+                </a>
 
-        <div class="sidebar-section-title">Engineering & Scale</div>
-        <ul class="nav-list">
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('system-design.html', 'SDE System Design (Phase 28)', this)">
-                    <span class="nav-icon">🏛️</span>
-                    <span>SDE System Design</span>
-                    <span class="nav-badge badge-live">Principal</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('monitoring.html', 'Observability & Metrics (Phase 26)', this)">
-                    <span class="nav-icon">📊</span>
-                    <span>Metrics & Prometheus</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('microservices.html', 'Microservices & Saga (Phase 22)', this)">
-                    <span class="nav-icon">🧩</span>
-                    <span>Microservices & Saga</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('loadtesting.html', 'Load Testing & Benchmarks (Phase 27)', this)">
-                    <span class="nav-icon">📈</span>
-                    <span>k6 Load Testing</span>
-                </button>
-            </li>
-        </ul>
+                <a href="http://localhost:3000" class="launch-card">
+                    <div>
+                        <div class="card-title">🛵 Delivery Partner Portal</div>
+                        <div class="card-desc">Rider duty toggle, dark store pickup verification, and 6-digit customer OTP doorstep delivery confirmation.</div>
+                    </div>
+                    <div class="card-cta">Open Rider App &rarr;</div>
+                </a>
 
-        <div class="sidebar-section-title">DevOps & Cloud</div>
-        <ul class="nav-list">
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('kubernetes.html', 'Kubernetes HPA (Phase 25)', this)">
-                    <span class="nav-icon">☸️</span>
-                    <span>Kubernetes Cluster</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('aws.html', 'AWS Cloud Multi-AZ (Phase 24)', this)">
-                    <span class="nav-icon">☁️</span>
-                    <span>AWS Multi-AZ</span>
-                </button>
-            </li>
-            <li>
-                <button class="nav-item-btn" onclick="switchTab('docker.html', 'Docker Container (Phase 23)', this)">
-                    <span class="nav-icon">🐳</span>
-                    <span>Docker Container</span>
-                </button>
-            </li>
-        </ul>
+                <a href="http://localhost:3000" class="launch-card">
+                    <div>
+                        <div class="card-title">🏢 Super Admin &amp; Control Tower</div>
+                        <div class="card-desc">All 21 enterprise modules, live dispatch radar, store ops picking station, and immutable audit logs.</div>
+                    </div>
+                    <div class="card-cta">Access Admin Suite &rarr;</div>
+                </a>
 
-        <div class="sidebar-footer">
-            <div>🟢 Server: <strong>Port 8080</strong></div>
-            <div style="margin-top: 4px;">💾 MySQL 8.0: <strong>Connected</strong></div>
-        </div>
-    </aside>
-
-    <!-- Main Workspace Area -->
-    <main class="main-workspace">
-
-        <!-- Top Status & Action Bar -->
-        <header class="topbar">
-            <div class="topbar-left">
-                <div class="breadcrumb">
-                    <span>Nexora</span>
-                    <span>/</span>
-                    <span class="current-title" id="breadcrumbTitle">Master Hub Overview</span>
-                </div>
-            </div>
-
-            <div class="topbar-right">
-                <span class="status-pill">
-                    <span class="status-dot"></span>
-                    <span id="systemStatusText">System Live: 8080</span>
-                </span>
-                <button class="btn-action" onclick="refreshCurrentTab()" title="Reload Active Module">
-                    <span>🔄</span> Refresh
-                </button>
-                <button class="btn-action" onclick="toggleFullScreen()" title="Full Screen View">
-                    <span>⛶</span> Fullscreen
-                </button>
-                <a href="/actuator/health" target="_blank" class="btn-action" title="View Spring Boot Actuator Health">
-                    <span>🏥</span> Health
+                <a href="/swagger-ui/index.html" class="launch-card">
+                    <div>
+                        <div class="card-title">📚 REST API Documentation</div>
+                        <div class="card-desc">Interactive Swagger/OpenAPI documentation for all 26 Spring Boot controllers and endpoints.</div>
+                    </div>
+                    <div class="card-cta">View OpenAPI Specs &rarr;</div>
                 </a>
             </div>
-        </header>
 
-        <!-- Body Content Area -->
-        <div class="content-body">
-
-            <!-- VIEW 1: MASTER OVERVIEW HUB -->
-            <div id="view-overview" class="view-panel active">
-                <div class="container-inner">
-
-                    <section class="hero">
-                        <h2>Unified Quick-Commerce & AI Engineering Platform</h2>
-                        <p>All 28 enterprise phases unified in a single comprehensive cockpit — featuring Gemini AI conversational commerce, real-time STOMP GPS tracking, pessimistic lock flash sales, and complete SDE Principal System Design.</p>
-                        
-                        <div class="tech-tags">
-                            <span class="tech-tag">Spring Boot 3.3.4</span>
-                            <span class="tech-tag">Java 21</span>
-                            <span class="tech-tag">MySQL 8.0</span>
-                            <span class="tech-tag">Redis Cache</span>
-                            <span class="tech-tag">Apache Kafka</span>
-                            <span class="tech-tag">WebSocket STOMP</span>
-                            <span class="tech-tag">Gemini 1.5 AI</span>
-                            <span class="tech-tag">Docker</span>
-                            <span class="tech-tag">Kubernetes HPA</span>
-                            <span class="tech-tag">AWS Multi-AZ</span>
-                            <span class="tech-tag">377 / 377 Passing Tests</span>
-                        </div>
-
-                        <div style="display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
-                            <button class="btn-action" style="background: var(--primary); color: #000; font-weight: 700;" onclick="switchTab('chat.html', 'AI Shopping Assistant', document.querySelectorAll('.nav-item-btn')[1])">
-                                🤖 Launch AI Shopping Chat
-                            </button>
-                            <button class="btn-action" onclick="switchTab('system-design.html', 'SDE System Design', document.querySelectorAll('.nav-item-btn')[5])">
-                                🏛️ Open System Design Capstone
-                            </button>
-                            <button class="btn-action" onclick="switchTab('tracking.html', 'Live GPS Tracking', document.querySelectorAll('.nav-item-btn')[2])">
-                                🗺️ Live Delivery Map
-                            </button>
-                            <button class="btn-action" onclick="switchTab('concurrency.html', 'Flash-Sale Simulator', document.querySelectorAll('.nav-item-btn')[3])">
-                                ⚡ Concurrency Stress Test
-                            </button>
-                        </div>
-                    </section>
-
-                    <!-- Diagnostics Strip -->
-                    <div class="diag-grid">
-                        <div class="diag-card">
-                            <div class="diag-icon">💾</div>
-                            <div class="diag-info">
-                                <h4>Database Engine</h4>
-                                <p id="diagDb">MySQL 8.0 (UP)</p>
-                            </div>
-                        </div>
-                        <div class="diag-card">
-                            <div class="diag-icon">🛡️</div>
-                            <div class="diag-info">
-                                <h4>Security & Auth</h4>
-                                <p>JWT + Multi-Role RBAC</p>
-                            </div>
-                        </div>
-                        <div class="diag-card">
-                            <div class="diag-icon">🧪</div>
-                            <div class="diag-info">
-                                <h4>Automated Test Suite</h4>
-                                <p>377 Tests (100% Pass)</p>
-                            </div>
-                        </div>
-                        <div class="diag-card">
-                            <div class="diag-icon">🌐</div>
-                            <div class="diag-info">
-                                <h4>Active Server</h4>
-                                <p>localhost:8080</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modules Showcase Grid -->
-                    <div class="section-header">
-                        <div>
-                            <h3>Enterprise Engineering Modules</h3>
-                            <p>Click any module below to launch it instantly right inside this same unified dashboard window.</p>
-                        </div>
-                    </div>
-
-                    <div class="modules-grid">
-
-                        <!-- Module: System Design -->
-                        <div class="module-card" onclick="switchTab('system-design.html', 'SDE System Design', document.querySelectorAll('.nav-item-btn')[5])">
-                            <div class="card-top">
-                                <span class="card-badge badge-green">Phase 28 (Capstone)</span>
-                                <span class="card-icon">🏛️</span>
-                            </div>
-                            <h4>Staff/Principal SDE System Design</h4>
-                            <p>16 High-level architectural deep-dives, 1 Million DAU roadmap, and comprehensive disaster recovery failure scenarios.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">1M DAU Scale</span>
-                                <span class="card-feature-pill">16 SDE Topics</span>
-                                <span class="card-feature-pill">Failure Matrix</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                        <!-- Module: AI Chat -->
-                        <div class="module-card" onclick="switchTab('chat.html', 'AI Assistant Chat', document.querySelectorAll('.nav-item-btn')[1])">
-                            <div class="card-top">
-                                <span class="card-badge badge-cyan">Phase 19</span>
-                                <span class="card-icon">🤖</span>
-                            </div>
-                            <h4>AI Conversational Shopping Assistant</h4>
-                            <p>Natural language e-commerce assistant powered by Gemini 1.5 Flash with live function calling, cart management, and store search.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">Gemini 1.5 Flash</span>
-                                <span class="card-feature-pill">Function Calling</span>
-                                <span class="card-feature-pill">Cart Actions</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                        <!-- Module: GPS Tracking -->
-                        <div class="module-card" onclick="switchTab('tracking.html', 'Live GPS Tracking', document.querySelectorAll('.nav-item-btn')[2])">
-                            <div class="card-top">
-                                <span class="card-badge badge-blue">Phase 17</span>
-                                <span class="card-icon">🗺️</span>
-                            </div>
-                            <h4>Live WebSocket GPS Order Tracking</h4>
-                            <p>Real-time delivery partner tracking with interactive Leaflet map, simulated driver coordinates, and order progression.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">WebSocket STOMP</span>
-                                <span class="card-feature-pill">Leaflet Map</span>
-                                <span class="card-feature-pill">Driver Telemetry</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                        <!-- Module: Concurrency Flash Sale -->
-                        <div class="module-card" onclick="switchTab('concurrency.html', 'Flash-Sale Simulator', document.querySelectorAll('.nav-item-btn')[3])">
-                            <div class="card-top">
-                                <span class="card-badge badge-rose">Phase 21</span>
-                                <span class="card-icon">⚡</span>
-                            </div>
-                            <h4>Flash-Sale Race Condition Simulator</h4>
-                            <p>Simulate 100 concurrent threads buying inventory simultaneously. Demonstrates zero overselling via pessimistic locking.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">100 Threads</span>
-                                <span class="card-feature-pill">Pessimistic Locks</span>
-                                <span class="card-feature-pill">Zero Overselling</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                        <!-- Module: Recommendations -->
-                        <div class="module-card" onclick="switchTab('recommendations.html', 'AI Recommendations', document.querySelectorAll('.nav-item-btn')[4])">
-                            <div class="card-top">
-                                <span class="card-badge badge-purple">Phase 20</span>
-                                <span class="card-icon">✨</span>
-                            </div>
-                            <h4>AI Recommendation Engine ("For You")</h4>
-                            <p>Context-aware personalized recommendations, trending products by category, and collaborative heuristic boosts.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">Trending Cache</span>
-                                <span class="card-feature-pill">Bought Together</span>
-                                <span class="card-feature-pill">Category Boost</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                        <!-- Module: Monitoring -->
-                        <div class="module-card" onclick="switchTab('monitoring.html', 'Observability & Metrics', document.querySelectorAll('.nav-item-btn')[6])">
-                            <div class="card-top">
-                                <span class="card-badge badge-cyan">Phase 26</span>
-                                <span class="card-icon">📊</span>
-                            </div>
-                            <h4>Observability & Prometheus Telemetry</h4>
-                            <p>Spring Boot Actuator health, Micrometer application metrics, Prometheus scraper endpoints, and Grafana specs.</p>
-                            <div class="card-features">
-                                <span class="card-feature-pill">/actuator</span>
-                                <span class="card-feature-pill">Micrometer</span>
-                                <span class="card-feature-pill">Grafana Spec</span>
-                            </div>
-                            <div class="card-footer">
-                                <span>Launch Inside Portal</span>
-                                <span>&rarr;</span>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <!-- Search and API Explorer -->
-                    <div class="console-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <div>
-                                <h3 style="font-size: 1.15rem; margin-bottom: 0.2rem;">⚡ Live API Explorer & Product Search</h3>
-                                <p style="color: var(--text-muted); font-size: 0.8rem;">Direct live queries against your Spring Boot REST APIs on localhost:8080.</p>
-                            </div>
-                            <button class="btn-action" style="background: var(--primary); color: #000;" onclick="testLiveSearch()">Run Search</button>
-                        </div>
-
-                        <div class="search-bar-wrap">
-                            <input type="text" id="searchBox" class="search-input" placeholder="Search product or category (e.g. Milk, Pizza, Organic)..." value="Milk">
-                            <button class="btn-action" onclick="testLiveSearch()">Search</button>
-                            <button class="btn-action" onclick="checkActuatorHealth()">Health Check</button>
-                        </div>
-
-                        <div class="results-box" id="consoleResults">
-// Click "Run Search" or "Health Check" above to test live backend APIs...
-                        </div>
-                    </div>
-
+            <div class="api-status-box">
+                <div class="status-row">
+                    <span>Backend Engine</span>
+                    <strong>Java 21 / Spring Boot 3.3.4 (Port 8080)</strong>
+                </div>
+                <div class="status-row">
+                    <span>Frontend App</span>
+                    <strong>Next.js 14 App Router (Port 3000 / Vercel)</strong>
+                </div>
+                <div class="status-row">
+                    <span>Authoritative Database</span>
+                    <strong>MySQL 8.x (quick_commerce_db / nexora_db)</strong>
+                </div>
+                <div class="status-row">
+                    <span>Brand System</span>
+                    <span class="pill-live">Leaf Green #176B45 &amp; Zesty Lime #D8F36A</span>
                 </div>
             </div>
-
-            <!-- VIEW 2: UNIFIED EMBEDDED MODULE VIEWPORT (ALL PAGES LOAD HERE SEAMLESSLY) -->
-            <div id="view-viewport" class="view-panel">
-                <div class="frame-wrapper">
-                    <div class="frame-loader" id="frameLoader">
-                        <div class="spinner"></div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted);">Loading module inside unified portal...</div>
-                    </div>
-                    <iframe id="unifiedModuleFrame" class="module-frame"></iframe>
-                </div>
-            </div>
-
         </div>
-    </main>
+    </div>
 
-</div>
-
-<!-- Quick Floating AI Shopping Assistant Launcher -->
-<button class="floating-ai-btn" onclick="switchTab('chat.html', 'AI Assistant Chat', document.querySelectorAll('.nav-item-btn')[1])">
-    <span>🤖</span>
-    <span>Ask Nexora AI</span>
-</button>
-
-<script>
-    let activeModuleUrl = 'overview';
-
-    async function switchTab(url, title, navButtonElement) {
-        activeModuleUrl = url;
-        
-        // Update sidebar active states
-        document.querySelectorAll('.nav-item-btn').forEach(btn => btn.classList.remove('active'));
-        if (navButtonElement) {
-            navButtonElement.classList.add('active');
-        }
-
-        // Update Topbar Breadcrumb
-        document.getElementById('breadcrumbTitle').innerText = title;
-
-        const overviewPanel = document.getElementById('view-overview');
-        const viewportPanel = document.getElementById('view-viewport');
-        const frame = document.getElementById('unifiedModuleFrame');
-        const loader = document.getElementById('frameLoader');
-
-        if (url === 'overview') {
-            viewportPanel.classList.remove('active');
-            overviewPanel.classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-        }
-
-        // Switch to viewport
-        overviewPanel.classList.remove('active');
-        viewportPanel.classList.add('active');
-        loader.style.opacity = '1';
-        loader.style.display = 'flex';
-
-        // Load content seamlessly using AJAX + srcdoc (avoids any X-Frame-Options restrictions)
-        try {
-            const res = await fetch(url);
-            let html = await res.text();
-            
-            // Ensure relative paths and APIs resolve to current host
-            if (!html.includes('<base')) {
-                html = html.replace('<head>', '<head><base href="/">');
-            }
-
-            frame.srcdoc = html;
-            
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 250);
-            }, 300);
-
-        } catch (err) {
-            console.warn('Fetch fallback to direct src:', err);
-            frame.src = url;
-            frame.onload = () => {
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 250);
-            };
-        }
-    }
-
-    function refreshCurrentTab() {
-        if (activeModuleUrl === 'overview') {
-            checkActuatorHealth();
-        } else {
-            const currentBtn = document.querySelector('.nav-item-btn.active');
-            switchTab(activeModuleUrl, document.getElementById('breadcrumbTitle').innerText, currentBtn);
-        }
-    }
-
-    function toggleFullScreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-        }
-    }
-
-    async function checkActuatorHealth() {
-        const consoleEl = document.getElementById('consoleResults');
-        consoleEl.innerText = "Querying /actuator/health...";
-        try {
-            const res = await fetch('/actuator/health');
-            const data = await res.json();
-            consoleEl.innerText = JSON.stringify(data, null, 2);
-            if (data.components?.db?.status === 'UP') {
-                document.getElementById('diagDb').innerText = "MySQL 8.0 (UP)";
-            }
-        } catch (err) {
-            consoleEl.innerText = "Error querying /actuator/health: " + err.message;
-        }
-    }
-
-    async function testLiveSearch() {
-        const query = document.getElementById('searchBox').value.trim();
-        const consoleEl = document.getElementById('consoleResults');
-        consoleEl.innerText = `Searching /api/v1/search/products?query=${encodeURIComponent(query)}...`;
-        try {
-            const res = await fetch(`/api/v1/search/products?query=${encodeURIComponent(query)}`);
-            if (!res.ok) {
-                const recRes = await fetch('/api/v1/recommendations/trending');
-                const recData = await recRes.json();
-                consoleEl.innerText = "// Search results (from trending recommendations fallback):\n" + JSON.stringify(recData, null, 2);
-                return;
-            }
-            const data = await res.json();
-            consoleEl.innerText = JSON.stringify(data, null, 2);
-        } catch (err) {
-            consoleEl.innerText = "Error: " + err.message;
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        checkActuatorHealth();
-    });
-</script>
-
+    <div class="footer">
+        &copy; 2026 NEXORA Quick Commerce Platform. All rights reserved.
+    </div>
 </body>
 </html>
