@@ -13,11 +13,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * RELATIONSHIPS:
- *   Order (Many) -> User/customer (One)    [@ManyToOne]
- *   Order (Many) -> Store (One)            [@ManyToOne]
- *   Order (Many) -> Address (One)          [@ManyToOne] - delivery destination
- *   Order (One) <-> OrderItem (Many)       [@OneToMany]
+ * Core Quick Commerce Order entity with authoritative state machine,
+ * delivery OTP verification, and store picker/packer audit metadata.
  */
 @Entity
 @Table(
@@ -82,6 +79,34 @@ public class Order {
 
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
+
+    /** Store Operations & Picking / Packing Audit Trail */
+    @Column(name = "picker_id")
+    private Long pickerId;
+
+    @Column(name = "picker_name", length = 100)
+    private String pickerName;
+
+    @Column(name = "picking_started_at")
+    private LocalDateTime pickingStartedAt;
+
+    @Column(name = "picking_completed_at")
+    private LocalDateTime pickingCompletedAt;
+
+    @Column(name = "packer_id")
+    private Long packerId;
+
+    @Column(name = "packer_name", length = 100)
+    private String packerName;
+
+    @Column(name = "packing_started_at")
+    private LocalDateTime packingStartedAt;
+
+    @Column(name = "packing_completed_at")
+    private LocalDateTime packingCompletedAt;
+
+    @Column(name = "packing_bag_code", length = 50)
+    private String packingBagCode;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference

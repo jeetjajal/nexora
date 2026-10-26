@@ -30,6 +30,18 @@ public class OrderResponse {
     private String paymentStatus;
     private String assignedRiderName;
     private String assignedRiderPhone;
+
+    // Store operations & picking/packing audit
+    private Long pickerId;
+    private String pickerName;
+    private LocalDateTime pickingStartedAt;
+    private LocalDateTime pickingCompletedAt;
+    private Long packerId;
+    private String packerName;
+    private LocalDateTime packingStartedAt;
+    private LocalDateTime packingCompletedAt;
+    private String packingBagCode;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

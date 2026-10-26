@@ -1,5 +1,6 @@
 package com.nexora.delivery.service;
 
+import com.nexora.delivery.dto.DeliveryAssignmentDetailResponse;
 import com.nexora.delivery.dto.DeliveryAssignmentResponse;
 import com.nexora.delivery.dto.DeliveryPartnerProfileResponse;
 import com.nexora.delivery.dto.LocationUpdateRequest;
@@ -258,6 +259,82 @@ public class DeliveryService {
 
         assignment = assignmentRepository.save(assignment);
         return mapToAssignmentResponse(assignment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliveryAssignmentDetailResponse> getMyAssignments(Long userId) {
+        DeliveryPartner partner = getOrCreatePartner(userId);
+        List<DeliveryAssignment> assignments = assignmentRepository
+                .findByDeliveryPartnerIdOrderByAssignedAtDesc(partner.getId());
+
+        List<DeliveryAssignmentDetailResponse> details = new java.util.ArrayList<>();
+        for (DeliveryAssignment a : assignments) {
+            Order o = a.getOrder();
+            if (o == null) continue;
+
+            String storeAddr = o.getStore() != null && o.getStore().getDescription() != null 
+                    ? o.getStore().getDescription() : "SG Highway Dark Store";
+            String custAddr = o.getDeliveryAddress() != null 
+                    ? o.getDeliveryAddress().getAddressLine1() + ", " + o.getDeliveryAddress().getCity() 
+                    : "Customer Destination";
+            String custName = o.getUser() != null ? o.getUser().getName() : "Customer";
+            String custPhone = o.getUser() != null && o.getUser().getPhone() != null ? o.getUser().getPhone() : "+91 98765 43210";
+
+            details.add(DeliveryAssignmentDetailResponse.builder()
+                    .assignmentId(a.getId())
+                    .orderId(o.getId())
+                    .orderNumber("ORD-" + o.getId())
+                    .storeId(o.getStore() != null ? o.getStore().getId() : null)
+                    .storeName(o.getStore() != null ? o.getStore().getName() : "Nexora Dark Store")
+                    .storeAddress(storeAddr)
+                    .storePhone("+91 79 4000 8899")
+                    .customerName(custName)
+                    .customerPhone(custPhone)
+                    .deliveryAddress(custAddr)
+                    .subtotal(o.getSubtotal())
+                    .deliveryFee(o.getDeliveryFee())
+                    .totalAmount(o.getTotalAmount())
+                    .paymentMethod(o.getPaymentMethod())
+                    .paymentStatus(o.getPaymentStatus())
+                    .itemCount(o.getItems() != null ? o.getItems().size() : 0)
+                    .packingBagCode(o.getPackingBagCode())
+                    .assignmentStatus(a.getStatus())
+                    .orderStatus(o.getStatus())
+                    .assignedAt(a.getAssignedAt())
+                    .acceptedAt(a.getAcceptedAt())
+                    .completedAt(a.getCompletedAt())
+                    .build());
+        }
+        return details;
+    }
+
+    @Transactional
+    public DeliveryAssignmentDetailResponse pickupAssignment(Long userId, Long assignmentId) {
+        DeliveryPartner partner = getOrCreatePartner(userId);
+        DeliveryAssignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assignment with id " + assignmentId + " not found"));
+
+        if (!assignment.getDeliveryPartner().getId().equals(partner.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to access this delivery assignment");
+        }
+
+        assignment.setStatus(AssignmentStatus.PICKED_UP);
+        assignment = assignmentRepository.save(assignment);
+
+        Order order = assignment.getOrder();
+        if (order != null) {
+            order.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+            orderRepository.save(order);
+        }
+
+        log.info("RIDER PICKUP: Rider {} ({}) picked up order #{}. Status is OUT_FOR_DELIVERY",
+                partner.getId(), partner.getUser() != null ? partner.getUser().getName() : "Rider",
+                order != null ? order.getId() : "null");
+
+        return getMyAssignments(userId).stream()
+                .filter(d -> d.getAssignmentId().equals(assignmentId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Updated assignment not found"));
     }
 
     private DeliveryPartner getOrCreatePartner(Long userId) {

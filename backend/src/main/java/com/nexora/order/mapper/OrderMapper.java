@@ -27,10 +27,10 @@ public class OrderMapper {
 
         return OrderResponse.builder()
                 .id(order.getId())
-                .storeId(order.getStore().getId())
-                .storeName(order.getStore().getName())
-                .deliveryAddressId(order.getDeliveryAddress().getId())
-                .status(order.getStatus().name())
+                .storeId(order.getStore() != null ? order.getStore().getId() : null)
+                .storeName(order.getStore() != null ? order.getStore().getName() : "Nexora Dark Store")
+                .deliveryAddressId(order.getDeliveryAddress() != null ? order.getDeliveryAddress().getId() : null)
+                .status(order.getStatus() != null ? order.getStatus().name() : "CREATED")
                 .items(itemResponses)
                 .subtotal(order.getSubtotal())
                 .deliveryFee(order.getDeliveryFee())
@@ -38,19 +38,35 @@ public class OrderMapper {
                 .deliveryOtp(deliveryOtp)
                 .paymentMethod(order.getPaymentMethod())
                 .paymentStatus(order.getPaymentStatus())
+                .pickerId(order.getPickerId())
+                .pickerName(order.getPickerName())
+                .pickingStartedAt(order.getPickingStartedAt())
+                .pickingCompletedAt(order.getPickingCompletedAt())
+                .packerId(order.getPackerId())
+                .packerName(order.getPackerName())
+                .packingStartedAt(order.getPackingStartedAt())
+                .packingCompletedAt(order.getPackingCompletedAt())
+                .packingBagCode(order.getPackingBagCode())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
     }
 
     private static OrderItemResponse toItemResponse(OrderItem item) {
+        String sku = item.getProduct() != null ? "SKU-" + item.getProduct().getId() : "SKU-" + item.getId();
+        String unit = "unit";
         return OrderItemResponse.builder()
                 .id(item.getId())
-                .productId(item.getProduct().getId())
+                .productId(item.getProduct() != null ? item.getProduct().getId() : null)
                 .productName(item.getProductNameSnapshot())
                 .unitPrice(item.getUnitPrice())
                 .quantity(item.getQuantity())
                 .subtotal(item.getSubtotal())
+                .isPicked(item.getIsPicked() != null ? item.getIsPicked() : false)
+                .pickedAt(item.getPickedAt())
+                .pickedBy(item.getPickedBy())
+                .sku(sku)
+                .unit(unit)
                 .build();
     }
 }

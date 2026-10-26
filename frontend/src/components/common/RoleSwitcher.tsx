@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useApp, AppRole } from '@/context/AppContext';
-import { ShoppingBag, Bike, ShieldCheck, Box, Navigation, Sparkles } from 'lucide-react';
+import { ShoppingBag, Bike, ShieldCheck, Box, Navigation, Sparkles, Layers, PackageCheck } from 'lucide-react';
 
 export const RoleSwitcher: React.FC = () => {
   const { role, setRole, activeOrder, setIsTrackingOpen, setIsAIOpen } = useApp();
@@ -49,6 +50,34 @@ export const RoleSwitcher: React.FC = () => {
               </button>
             );
           })}
+
+          {/* Quick Dedicated Route Links */}
+          <div className="hidden lg:flex items-center gap-1 ml-2 pl-2 border-l border-white/20">
+            <Link
+              href="/store/manager"
+              className="text-[10px] text-white/70 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+            >
+              Manager
+            </Link>
+            <Link
+              href="/store/picker"
+              className="text-[10px] text-white/70 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+            >
+              Picker
+            </Link>
+            <Link
+              href="/store/packing"
+              className="text-[10px] text-white/70 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+            >
+              Packing
+            </Link>
+            <Link
+              href="/rider/orders"
+              className="text-[10px] text-white/70 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 transition-colors"
+            >
+              Rider
+            </Link>
+          </div>
         </div>
 
         {/* Right: Quick Actions */}

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -16,8 +17,13 @@ import java.math.BigDecimal;
 public class OrderItemResponse {
     private Long id;
     private Long productId;
-    private String productName; // the SNAPSHOT, not the live product name
-    private BigDecimal unitPrice; // the SNAPSHOT, not the live price
+    private String productName;
+    private BigDecimal unitPrice;
     private Integer quantity;
     private BigDecimal subtotal;
+    private Boolean isPicked;
+    private LocalDateTime pickedAt;
+    private String pickedBy;
+    private String sku;
+    private String unit;
 }

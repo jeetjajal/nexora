@@ -416,4 +416,231 @@ export class ApiClient {
 
     return res.json();
   }
+
+  // Phase 7: Store Operations — Order Queue & Metrics
+  static async getStoreQueue(storeId = 4, token?: string): Promise<StoreQueueMetrics> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/queue?storeId=${storeId}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch store operations queue');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Store Operations — Store Inventory
+  static async getStoreInventory(storeId = 4, token?: string): Promise<StoreInventoryItem[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/inventory?storeId=${storeId}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch store inventory');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Store Operations — Stock Adjustment
+  static async adjustStoreStock(
+    storeId: number,
+    payload: { productId: number; amount: number; action: string; reason: string },
+    token?: string
+  ): Promise<StoreInventoryItem> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/inventory/adjust?storeId=${storeId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to adjust stock');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Picker Workflow — Start Picking Order
+  static async startPicking(orderId: number, token?: string): Promise<StoreQueueOrder> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/picker/start?orderId=${orderId}`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to start picking');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Picker Workflow — Pick Item
+  static async pickItem(orderId: number, itemId: number, barcode?: string, token?: string): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/picker/item?orderId=${orderId}&itemId=${itemId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ barcode }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to pick item');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Picker Workflow — Complete Picking
+  static async completePicking(orderId: number, token?: string): Promise<StoreQueueOrder> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/picker/complete?orderId=${orderId}`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to complete picking');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Packer Workflow — Complete Packing & Hand over to Dispatch
+  static async completePacking(orderId: number, bagCode: string, token?: string): Promise<StoreQueueOrder> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/store/packing/complete?orderId=${orderId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ bagCode }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to complete packing');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Delivery App — Retrieve Partner Deliveries
+  static async getMyDeliveryAssignments(token?: string): Promise<DeliveryAssignmentDetail[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/rider/assignments', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to retrieve delivery assignments');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 7: Delivery App — Pickup from Dark Store
+  static async pickupDeliveryAssignment(assignmentId: number, token?: string): Promise<DeliveryAssignmentDetail> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/rider/assignments/${assignmentId}/pickup`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to mark delivery pickup');
+    }
+    const json = await res.json();
+    return json.data;
+  }
 }
+
+export interface StoreQueueOrder {
+  id: number;
+  orderNumber?: string;
+  status: string;
+  subtotal: number;
+  deliveryFee: number;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  items: {
+    id: number;
+    productId: number;
+    productName: string;
+    unitPrice: number;
+    quantity: number;
+    subtotal: number;
+    isPicked: boolean;
+    sku?: string;
+  }[];
+  pickerName?: string;
+  packerName?: string;
+  packingBagCode?: string;
+  createdAt: string;
+}
+
+export interface StoreQueueMetrics {
+  storeId: number;
+  storeName: string;
+  totalOrders: number;
+  confirmedCount: number;
+  preparingCount: number;
+  readyCount: number;
+  outForDeliveryCount: number;
+  deliveredCount: number;
+  lowStockCount: number;
+  averageProcessingMinutes: number;
+  orders: StoreQueueOrder[];
+}
+
+export interface StoreInventoryItem {
+  productId: number;
+  productName: string;
+  sku: string;
+  unit: string;
+  price: number;
+  quantity: number;
+  lowStockThreshold: number;
+  status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+}
+
+export interface DeliveryAssignmentDetail {
+  assignmentId: number;
+  orderId: number;
+  orderNumber: string;
+  storeId?: number;
+  storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  subtotal: number;
+  deliveryFee: number;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  itemCount: number;
+  packingBagCode?: string;
+  assignmentStatus: 'ASSIGNED' | 'ACCEPTED' | 'PICKED_UP' | 'DELIVERED' | 'REJECTED';
+  orderStatus: string;
+  assignedAt: string;
+  acceptedAt?: string;
+  completedAt?: string;
+}
+

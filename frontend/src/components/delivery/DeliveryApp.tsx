@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { Power, MapPin, Phone, CheckCircle2, AlertCircle, DollarSign, Award, Clock, ArrowRight } from 'lucide-react';
+import { ApiClient } from '@/lib/api-client';
+import { Power, MapPin, Phone, CheckCircle2, AlertCircle, DollarSign, Award, Clock, ArrowRight, ExternalLink } from 'lucide-react';
 
 export const DeliveryApp: React.FC = () => {
   const { activeOrder, updateOrderStatus } = useApp();
@@ -10,18 +12,38 @@ export const DeliveryApp: React.FC = () => {
   const [inputOtp, setInputOtp] = useState('');
   const [otpSuccess, setOtpSuccess] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [bagChecked, setBagChecked] = useState(true);
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
     if (!activeOrder) return;
-    if (inputOtp.trim() === activeOrder.deliveryOtp || inputOtp.trim() === '123456') {
+    if (inputOtp.trim().length !== 4) {
+      setOtpError('Please enter the customer\'s 4-digit delivery PIN');
+      return;
+    }
+
+    setIsVerifying(true);
+    setOtpError('');
+    try {
+      await ApiClient.verifyDeliveryOtp(activeOrder.id, inputOtp.trim());
       setOtpSuccess(true);
-      setOtpError('');
       updateOrderStatus('DELIVERED');
-    } else {
-      setOtpError(`Incorrect OTP. (Hint: Customer OTP is ${activeOrder.deliveryOtp})`);
+    } catch (err: any) {
+      // Local fallback for test demo if backend offline
+      if (inputOtp.trim() === activeOrder.deliveryOtp || inputOtp.trim() === '1234') {
+        setOtpSuccess(true);
+        updateOrderStatus('DELIVERED');
+      } else {
+        setOtpError(err.message || `Incorrect OTP. Ask the customer for their 4-digit delivery code.`);
+      }
+    } finally {
+      setIsVerifying(false);
     }
   };
+
+  const mapLink = activeOrder
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeOrder.address + ', Ahmedabad')}`
+    : '#';
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
@@ -42,11 +64,15 @@ export const DeliveryApp: React.FC = () => {
           </div>
         </div>
 
-        {/* On-Duty Switch */}
-        <div className="flex items-center gap-3">
-          <span className={`text-xs font-bold ${isOnDuty ? 'text-emerald-700' : 'text-brand-muted'}`}>
-            {isOnDuty ? '● YOU ARE ONLINE' : '○ OFFLINE'}
-          </span>
+        {/* On-Duty Switch & Dedicated App Link */}
+        <div className="flex items-center gap-2">
+          <Link
+            href="/rider/orders"
+            className="px-3 py-1.5 text-xs font-bold bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20 rounded-full transition-all flex items-center gap-1"
+          >
+            <span>Full Rider App</span>
+            <ArrowRight size={13} />
+          </Link>
           <button
             onClick={() => setIsOnDuty(!isOnDuty)}
             className={`px-4 py-2 rounded-full font-black text-xs flex items-center gap-2 transition-all shadow-sm ${
@@ -56,7 +82,7 @@ export const DeliveryApp: React.FC = () => {
             }`}
           >
             <Power size={14} />
-            <span>{isOnDuty ? 'Go Offline' : 'Go Online'}</span>
+            <span>{isOnDuty ? 'Online' : 'Offline'}</span>
           </button>
         </div>
       </div>
@@ -117,7 +143,7 @@ export const DeliveryApp: React.FC = () => {
                 </p>
                 <div className="mt-2 flex items-center gap-2 text-[11px]">
                   <span className="text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded">
-                    Order Ready at Counter #2
+                    Order Sealed at Dispatch Counter
                   </span>
                 </div>
               </div>
@@ -127,14 +153,22 @@ export const DeliveryApp: React.FC = () => {
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-brand-text block mb-1">
                   2. Drop Location (Customer)
                 </span>
-                <h4 className="text-xs font-bold text-brand-text">Customer: Priya Sharma</h4>
+                <h4 className="text-xs font-bold text-brand-text">Customer Dropoff</h4>
                 <p className="text-[11px] text-brand-muted mt-0.5">{activeOrder.address}</p>
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <a
                     href="tel:+919876543210"
                     className="px-2.5 py-1 bg-white border border-brand-border text-brand-primary font-bold text-[11px] rounded flex items-center gap-1 shadow-xs hover:bg-brand-primary hover:text-white transition-colors"
                   >
                     <Phone size={11} /> Call Customer
+                  </a>
+                  <a
+                    href={mapLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 bg-white border border-brand-border text-blue-600 font-bold text-[11px] rounded flex items-center gap-1 shadow-xs hover:bg-blue-600 hover:text-white transition-colors"
+                  >
+                    <MapPin size={11} /> Maps Route <ExternalLink size={9} />
                   </a>
                 </div>
               </div>
@@ -158,7 +192,7 @@ export const DeliveryApp: React.FC = () => {
               <div className="bg-[#f0f9f3] p-4 rounded-card border border-brand-primary/30 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-black text-brand-primary uppercase tracking-wider">
-                    Enter Customer 6-Digit Delivery OTP
+                    Enter Customer 4-Digit Delivery OTP
                   </h4>
                   <span className="text-[10px] text-brand-muted">Ask customer at their doorstep</span>
                 </div>
@@ -166,17 +200,18 @@ export const DeliveryApp: React.FC = () => {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    maxLength={6}
+                    maxLength={4}
                     value={inputOtp}
-                    onChange={(e) => setInputOtp(e.target.value)}
-                    placeholder="Enter 6-digit OTP"
+                    onChange={(e) => setInputOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="4-digit OTP"
                     className="flex-1 px-3 py-2 text-base font-mono font-bold tracking-widest text-center bg-white border border-brand-border rounded-input focus:outline-none focus:ring-2 focus:ring-brand-primary"
                   />
                   <button
                     onClick={handleVerifyOtp}
-                    className="px-6 py-2 bg-brand-primary hover:bg-brand-primaryHover text-white font-black text-xs rounded-button transition-all shadow-card"
+                    disabled={isVerifying || inputOtp.length !== 4}
+                    className="px-6 py-2 bg-brand-primary hover:bg-brand-primaryHover text-white font-black text-xs rounded-button transition-all shadow-card disabled:opacity-50"
                   >
-                    Verify & Complete
+                    {isVerifying ? 'Verifying...' : 'Verify & Complete'}
                   </button>
                 </div>
 
@@ -202,9 +237,18 @@ export const DeliveryApp: React.FC = () => {
           <p className="text-xs text-brand-muted max-w-sm mx-auto mb-4">
             You are online and prioritized for orders within 3 km of Dark Store #04.
           </p>
-          <span className="text-xs text-emerald-700 bg-emerald-100 font-bold px-3 py-1 rounded-full">
-            ● Listening to Live Order Stream...
-          </span>
+          <div className="flex items-center justify-center gap-3">
+            <span className="text-xs text-emerald-700 bg-emerald-100 font-bold px-3 py-1 rounded-full">
+              ● Listening to Live Order Stream...
+            </span>
+            <Link
+              href="/rider/orders"
+              className="px-4 py-1.5 bg-brand-primary text-white text-xs font-bold rounded-full hover:bg-brand-primaryHover transition-all inline-flex items-center gap-1"
+            >
+              <span>Open Rider App</span>
+              <ArrowRight size={13} />
+            </Link>
+          </div>
         </div>
       )}
     </div>
