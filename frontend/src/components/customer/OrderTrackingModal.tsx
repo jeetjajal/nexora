@@ -1,32 +1,102 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { X, CheckCircle2, Phone, MapPin, Bike, PackageCheck, Clock, ShieldAlert, Sparkles } from 'lucide-react';
+import { ApiClient, OrderTrackingInfo } from '@/lib/api-client';
+import {
+  X,
+  CheckCircle2,
+  Phone,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  AlertTriangle,
+  RefreshCw,
+  XCircle,
+} from 'lucide-react';
 
 export const OrderTrackingModal: React.FC = () => {
   const {
     isTrackingOpen,
     setIsTrackingOpen,
     activeOrder,
-    updateOrderStatus,
+    currentUser,
   } = useApp();
+
+  const [trackingData, setTrackingData] = useState<OrderTrackingInfo | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState<string | null>(null);
+
+  // Poll tracking endpoint while modal is open
+  useEffect(() => {
+    if (!isTrackingOpen || !activeOrder) return;
+
+    let isMounted = true;
+
+    const fetchTracking = async () => {
+      try {
+        setIsPolling(true);
+        const data = await ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken);
+        if (isMounted && data) {
+          setTrackingData(data);
+        }
+      } catch {
+        // Fallback gracefully
+      } finally {
+        if (isMounted) setIsPolling(false);
+      }
+    };
+
+    fetchTracking();
+    const intervalId = setInterval(fetchTracking, 4500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [isTrackingOpen, activeOrder, currentUser?.accessToken]);
 
   if (!isTrackingOpen || !activeOrder) return null;
 
-  const steps = [
-    { key: 'PLACED', label: 'Order Confirmed', time: 'Just now', desc: 'Received at Dark Store #04 SG Highway' },
-    { key: 'STORE_PICKING', label: 'Picking Items', time: '1 min ago', desc: 'Picker barcode-scanning items' },
-    { key: 'PACKED', label: 'Bag Packed & Sealed', time: '3 mins ago', desc: 'Quality checked and ready for rider' },
-    { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', time: 'On the way', desc: 'Rider is 3.2 km away' },
-    { key: 'DELIVERED', label: 'Delivered', time: 'Completed', desc: 'Handed over at doorstep' },
+  const currentStatus = trackingData?.status || activeOrder.status;
+  const isDelivered = currentStatus === 'DELIVERED';
+  const isCancelled = currentStatus === 'CANCELLED';
+  const isCancellable = currentStatus === 'PLACED' || currentStatus === 'CONFIRMED' || currentStatus === 'CREATED';
+
+  const defaultTimeline = [
+    { key: 'PLACED', label: 'Order Placed', time: 'Just now', desc: 'Received at Dark Store #04 SG Highway' },
+    { key: 'CONFIRMED', label: 'Order Confirmed', time: '1 min ago', desc: 'Stock allocated to dark store queue' },
+    { key: 'PACKING', label: 'Packing Items', time: '3 mins ago', desc: 'Picker barcode-scanning items' },
+    { key: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', time: 'On the way', desc: 'Rider Ramesh Patel en route on EV' },
+    { key: 'DELIVERED', label: 'Delivered', time: 'Completed', desc: 'Handed over at doorstep via OTP' },
   ];
 
-  const currentIdx = steps.findIndex(s => s.key === activeOrder.status);
+  const timelineEvents = trackingData?.timeline && trackingData.timeline.length > 0
+    ? trackingData.timeline
+    : defaultTimeline.map((s, idx) => ({
+        status: s.key,
+        title: s.label,
+        description: s.desc,
+        timestamp: s.time,
+        completed: idx <= (currentStatus === 'DELIVERED' ? 4 : currentStatus === 'OUT_FOR_DELIVERY' ? 3 : 2),
+        current: idx === (currentStatus === 'DELIVERED' ? 4 : currentStatus === 'OUT_FOR_DELIVERY' ? 3 : 2),
+      }));
 
-  const advanceStatus = () => {
-    if (currentIdx < steps.length - 1) {
-      updateOrderStatus(steps[currentIdx + 1].key as any);
+  const handleCancelOrder = async () => {
+    if (!confirm('Are you sure you want to cancel this order?')) return;
+    setIsCancelling(true);
+    setCancelMessage(null);
+    try {
+      await ApiClient.cancelOrder(activeOrder.id, currentUser?.accessToken);
+      setCancelMessage('Order cancelled successfully. Stock restored.');
+      // Refresh
+      const data = await ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken);
+      setTrackingData(data);
+    } catch (err: any) {
+      setCancelMessage(err.message || 'Could not cancel order');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -52,9 +122,16 @@ export const OrderTrackingModal: React.FC = () => {
                 <span className="text-[10px] bg-brand-accent text-brand-text px-2 py-0.5 rounded-full font-black">
                   {activeOrder.id}
                 </span>
+                {isPolling && (
+                  <RefreshCw size={11} className="animate-spin text-white/70" />
+                )}
               </div>
               <p className="text-[11px] text-white/80">
-                {activeOrder.status === 'DELIVERED' ? 'Successfully Delivered' : `Arriving in ~${activeOrder.etaMinutes} Mins`}
+                {isDelivered
+                  ? 'Successfully Delivered'
+                  : isCancelled
+                  ? 'Order Cancelled'
+                  : `Arriving in ~${trackingData?.estimatedDeliveryMinutes || activeOrder.etaMinutes} Mins`}
               </p>
             </div>
           </div>
@@ -79,10 +156,20 @@ export const OrderTrackingModal: React.FC = () => {
               </div>
             </div>
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                Live Dispatch
-              </span>
+              {isCancelled ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
+                  Cancelled
+                </span>
+              ) : isDelivered ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  <CheckCircle2 size={12} /> Delivered
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  Live Dispatch
+                </span>
+              )}
             </div>
           </div>
 
@@ -94,17 +181,21 @@ export const OrderTrackingModal: React.FC = () => {
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-brand-text">{activeOrder.riderName}</h4>
+                  <h4 className="text-xs font-bold text-brand-text">
+                    {trackingData?.assignedRiderName || activeOrder.riderName}
+                  </h4>
                   <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded">
-                    ★ {activeOrder.riderRating}
+                    ★ 4.92
                   </span>
                 </div>
-                <p className="text-[10px] text-brand-muted">Nexora Speed Partner • Electric EV</p>
+                <p className="text-[10px] text-brand-muted">
+                  Nexora Speed Partner • {trackingData?.assignedRiderVehicle || 'Electric EV'}
+                </p>
               </div>
             </div>
 
             <a
-              href={`tel:${activeOrder.riderPhone}`}
+              href={`tel:${trackingData?.assignedRiderPhone || activeOrder.riderPhone}`}
               className="px-3 py-1.5 bg-brand-primary/10 hover:bg-brand-primary hover:text-white text-brand-primary rounded-button text-xs font-bold flex items-center gap-1 transition-colors"
             >
               <Phone size={12} />
@@ -113,15 +204,23 @@ export const OrderTrackingModal: React.FC = () => {
           </div>
         </div>
 
+        {/* Cancellation Message */}
+        {cancelMessage && (
+          <div className="bg-amber-50 text-amber-900 px-4 py-2 text-xs flex items-center gap-2 border-b border-amber-200">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>{cancelMessage}</span>
+          </div>
+        )}
+
         {/* Progress Tracker Steps */}
-        <div className="p-5 max-h-[40vh] overflow-y-auto space-y-4">
+        <div className="p-5 max-h-[38vh] overflow-y-auto space-y-4">
           <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-brand-border">
-            {steps.map((s, idx) => {
-              const isDone = idx <= currentIdx;
-              const isCurrent = idx === currentIdx;
+            {timelineEvents.map((s, idx) => {
+              const isDone = s.completed;
+              const isCurrent = s.current;
 
               return (
-                <div key={s.key} className="relative flex items-start justify-between">
+                <div key={s.status || idx} className="relative flex items-start justify-between">
                   {/* Step Dot */}
                   <div
                     className={`absolute -left-6 top-0.5 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
@@ -136,13 +235,15 @@ export const OrderTrackingModal: React.FC = () => {
                   {/* Step Details */}
                   <div className="flex-1 pr-4">
                     <p className={`text-xs font-bold ${isCurrent ? 'text-brand-primary font-black' : isDone ? 'text-brand-text' : 'text-brand-muted'}`}>
-                      {s.label}
+                      {s.title}
                     </p>
-                    <p className="text-[11px] text-brand-muted">{s.desc}</p>
+                    <p className="text-[11px] text-brand-muted">{s.description}</p>
                   </div>
 
                   <span className="text-[10px] font-semibold text-brand-muted shrink-0">
-                    {s.time}
+                    {typeof s.timestamp === 'string' && s.timestamp.includes('T')
+                      ? new Date(s.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : s.timestamp}
                   </span>
                 </div>
               );
@@ -159,24 +260,24 @@ export const OrderTrackingModal: React.FC = () => {
           </div>
         </div>
 
-        {/* Simulation / Interactive controls for user */}
+        {/* Action Controls */}
         <div className="p-4 bg-white border-t border-brand-border flex items-center justify-between gap-3">
-          <button
-            onClick={advanceStatus}
-            disabled={currentIdx >= steps.length - 1}
-            className="flex-1 py-2.5 bg-brand-accent hover:brightness-105 disabled:opacity-40 text-brand-text font-black rounded-button text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
-          >
-            <Sparkles size={13} />
-            <span>
-              {currentIdx >= steps.length - 1 ? 'Order Completed!' : `Simulate Next: "${steps[Math.min(currentIdx + 1, steps.length - 1)].label}"`}
-            </span>
-          </button>
+          {isCancellable && !isCancelled && !isDelivered ? (
+            <button
+              onClick={handleCancelOrder}
+              disabled={isCancelling}
+              className="py-2.5 px-3 bg-red-50 hover:bg-red-100 text-red-700 font-bold rounded-button text-xs transition-colors border border-red-200 flex items-center gap-1.5"
+            >
+              <XCircle size={13} />
+              <span>{isCancelling ? 'Cancelling...' : 'Cancel Order'}</span>
+            </button>
+          ) : null}
 
           <button
             onClick={() => setIsTrackingOpen(false)}
-            className="px-4 py-2.5 bg-brand-bg hover:bg-brand-border text-brand-text font-bold rounded-button text-xs transition-colors"
+            className="flex-1 py-2.5 bg-brand-primary hover:bg-brand-primaryHover text-white font-black rounded-button text-xs transition-colors shadow-sm text-center"
           >
-            Close
+            Close Tracker
           </button>
         </div>
       </div>

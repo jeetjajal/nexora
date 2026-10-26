@@ -82,12 +82,14 @@ export interface CheckoutPayload {
     pincode: string;
     tag: 'HOME' | 'WORK' | 'OTHER';
   };
+  deliveryAddressId?: number;
   paymentMethod: 'RAZORPAY' | 'COD';
   couponCode?: string;
 }
 
 export interface OrderResponse {
   orderId: string;
+  numericId?: number;
   deliveryOtp: string;
   darkStore: string;
   etaMinutes: number;
@@ -99,6 +101,30 @@ export interface OrderResponse {
     phone: string;
     rating: number;
   };
+  createdAt: string;
+}
+
+export interface TrackingTimelineEvent {
+  status: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  completed: boolean;
+  current: boolean;
+}
+
+export interface OrderTrackingInfo {
+  orderId: string;
+  status: string;
+  storeName: string;
+  storeAddress: string;
+  deliveryAddress: string;
+  estimatedDeliveryMinutes: number;
+  assignedRiderName: string;
+  assignedRiderPhone: string;
+  assignedRiderVehicle: string;
+  deliveryOtp?: string;
+  timeline: TrackingTimelineEvent[];
   createdAt: string;
 }
 
@@ -281,14 +307,17 @@ export class ApiClient {
     }
   }
 
-  // Place Order
-  static async placeOrder(payload: CheckoutPayload, idempotencyKey?: string): Promise<OrderResponse> {
+  // Orders: Place Order
+  static async placeOrder(payload: CheckoutPayload, idempotencyKey?: string, token?: string): Promise<OrderResponse> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch('/api/orders', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey || (typeof crypto !== 'undefined' ? crypto.randomUUID() : String(Date.now())),
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
@@ -299,6 +328,53 @@ export class ApiClient {
 
     const json = await res.json();
     return json.data;
+  }
+
+  // Orders: Real-time Order Tracking
+  static async trackOrder(orderId: string, token?: string): Promise<OrderTrackingInfo> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/orders/${orderId}/track`, { headers, cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error('Failed to fetch order tracking');
+    }
+
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Orders: Cancel Order
+  static async cancelOrder(orderId: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/orders/${orderId}/cancel`, {
+      method: 'POST',
+      headers,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to cancel order');
+    }
+  }
+
+  // Orders: Verify Delivery OTP (Delivery Partner Doorstep Handshake)
+  static async verifyDeliveryOtp(orderId: string, otp: string, token?: string): Promise<void> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/orders/${orderId}/verify-delivery`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ otp }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Delivery OTP verification failed');
+    }
   }
 
   // Razorpay: Create Payment Order

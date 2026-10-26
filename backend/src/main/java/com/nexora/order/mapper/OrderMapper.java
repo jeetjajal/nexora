@@ -16,6 +16,10 @@ public class OrderMapper {
     }
 
     public static OrderResponse toResponse(Order order, Set<OrderItem> items) {
+        return toResponse(order, items, null);
+    }
+
+    public static OrderResponse toResponse(Order order, Set<OrderItem> items, String deliveryOtp) {
         List<OrderItemResponse> itemResponses = items.stream()
                 .sorted(Comparator.comparing(OrderItem::getId))
                 .map(OrderMapper::toItemResponse)
@@ -31,6 +35,9 @@ public class OrderMapper {
                 .subtotal(order.getSubtotal())
                 .deliveryFee(order.getDeliveryFee())
                 .totalAmount(order.getTotalAmount())
+                .deliveryOtp(deliveryOtp)
+                .paymentMethod(order.getPaymentMethod())
+                .paymentStatus(order.getPaymentStatus())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

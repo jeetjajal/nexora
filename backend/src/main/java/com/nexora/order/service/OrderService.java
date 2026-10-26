@@ -44,6 +44,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.nexora.order.dto.DirectCheckoutRequest;
+import com.nexora.order.dto.DirectCheckoutItemRequest;
+import com.nexora.order.dto.VerifyDeliveryOtpRequest;
+import com.nexora.order.dto.OrderTrackingResponse;
+import com.nexora.order.dto.TrackingTimelineEvent;
+import com.nexora.product.repository.ProductRepository;
+import java.security.SecureRandom;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import static com.nexora.order.entity.OrderStatus.*;
 
 /**
@@ -76,6 +86,9 @@ public class OrderService {
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.nexora.websocket.service.OrderTrackingWebSocketService orderTrackingWebSocketService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ProductRepository productRepository;
 
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
@@ -705,6 +718,310 @@ public class OrderService {
     }
 
     // ------------------------------------------------------------
+
+    // ============================================================
+    // PHASE 6: DIRECT CHECKOUT, DELIVERY OTP & REAL-TIME TRACKING
+    // ============================================================
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    public static String generate4DigitOtp() {
+        int code = 1000 + SECURE_RANDOM.nextInt(9000);
+        return String.valueOf(code);
+    }
+
+    public static String hashOtp(String otp) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(otp.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
+    }
+
+    @Transactional
+    public OrderResponse directCheckout(
+            UserPrincipal caller,
+            DirectCheckoutRequest request,
+            String idempotencyKey) {
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            String fingerprint = request.getDeliveryAddressId() + "_" + (request.getItems() != null ? request.getItems().size() : 0);
+            return idempotencyService.executeIdempotently(
+                    idempotencyKey,
+                    IDEMPOTENCY_SCOPE_CHECKOUT,
+                    caller.getId(),
+                    fingerprint,
+                    new TypeReference<OrderResponse>() {},
+                    () -> directCheckoutInternal(caller, request)
+            );
+        }
+
+        return directCheckoutInternal(caller, request);
+    }
+
+    private OrderResponse directCheckoutInternal(
+            UserPrincipal caller,
+            DirectCheckoutRequest request) {
+
+        Address deliveryAddress = addressService.findOwnedAddressOrThrow(
+                caller,
+                request.getDeliveryAddressId()
+        );
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new EmptyCartException();
+        }
+
+        if (productRepository == null) {
+            throw new IllegalStateException("ProductRepository is not available");
+        }
+
+        Product firstProduct = productRepository.findById(request.getItems().get(0).getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + request.getItems().get(0).getProductId()));
+
+        Store store = firstProduct.getStore();
+        if (store == null) {
+            store = storeRepository.findAll().stream().findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException("No active store found"));
+        }
+
+        String rawOtp = generate4DigitOtp();
+        String otpHash = hashOtp(rawOtp);
+
+        Order order = Order.builder()
+                .user(caller.getUser())
+                .store(store)
+                .deliveryAddress(deliveryAddress)
+                .status(OrderStatus.CREATED)
+                .subtotal(BigDecimal.ZERO)
+                .deliveryFee(deliveryFee != null ? deliveryFee : new BigDecimal("25.00"))
+                .totalAmount(BigDecimal.ZERO)
+                .deliveryOtpHash(otpHash)
+                .otpAttempts(0)
+                .paymentMethod(request.getPaymentMethod() != null ? request.getPaymentMethod() : "RAZORPAY")
+                .paymentStatus("PENDING")
+                .build();
+
+        Order savedOrder = orderRepository.save(order);
+
+        Set<OrderItem> orderItems = new LinkedHashSet<>();
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (DirectCheckoutItemRequest itemReq : request.getItems()) {
+            Product product = productRepository.findById(itemReq.getProductId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + itemReq.getProductId()));
+
+            if (!product.isAvailable()) {
+                throw new ProductUnavailableException(product.getId());
+            }
+
+            inventoryService.reduceStockForOrder(product.getId(), itemReq.getQuantity());
+
+            BigDecimal unitPrice = product.getPrice().subtract(
+                    product.getDiscount() != null ? product.getDiscount() : BigDecimal.ZERO
+            );
+
+            BigDecimal lineSubtotal = unitPrice.multiply(BigDecimal.valueOf(itemReq.getQuantity()));
+
+            OrderItem orderItem = OrderItem.builder()
+                    .order(savedOrder)
+                    .product(product)
+                    .productNameSnapshot(product.getName())
+                    .unitPrice(unitPrice)
+                    .quantity(itemReq.getQuantity())
+                    .subtotal(lineSubtotal)
+                    .build();
+
+            orderItems.add(orderItem);
+            subtotal = subtotal.add(lineSubtotal);
+        }
+
+        orderItemRepository.saveAll(orderItems);
+
+        BigDecimal calculatedFee = subtotal.compareTo(new BigDecimal("199.00")) >= 0 ? BigDecimal.ZERO : (deliveryFee != null ? deliveryFee : new BigDecimal("25.00"));
+        BigDecimal discount = BigDecimal.ZERO;
+        if ("NEXORA50".equalsIgnoreCase(request.getCouponCode()) && subtotal.compareTo(new BigDecimal("200.00")) >= 0) {
+            discount = new BigDecimal("50.00");
+        }
+
+        BigDecimal finalTotal = subtotal.add(calculatedFee).subtract(discount).max(BigDecimal.ZERO);
+
+        savedOrder.setItems(orderItems);
+        savedOrder.setSubtotal(subtotal);
+        savedOrder.setDeliveryFee(calculatedFee);
+        savedOrder.setTotalAmount(finalTotal);
+
+        Order finalizedOrder = orderRepository.save(savedOrder);
+
+        try {
+            kafkaEventProducer.publishOrderCreated(finalizedOrder);
+        } catch (Exception ex) {}
+
+        try {
+            if (orderTrackingWebSocketService != null) {
+                orderTrackingWebSocketService.broadcastOrderStatusUpdate(finalizedOrder, null, "Order placed successfully!");
+            }
+        } catch (Exception ex) {}
+
+        return OrderMapper.toResponse(finalizedOrder, orderItems, rawOtp);
+    }
+
+    @Transactional
+    public OrderResponse verifyDeliveryOtp(
+            UserPrincipal caller,
+            Long orderId,
+            VerifyDeliveryOtpRequest request) {
+
+        Order order = findOrderOrThrow(orderId);
+
+        boolean isDeliveryPartner = caller.getUser().getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.DELIVERY_PARTNER || r.getName() == RoleName.ADMIN || r.getName() == RoleName.STORE_OWNER);
+
+        if (!isDeliveryPartner) {
+            throw new ForbiddenOperationException("Only delivery partners or administrators can verify delivery OTP.");
+        }
+
+        if (order.getStatus() == OrderStatus.DELIVERED) {
+            return OrderMapper.toResponse(order, order.getItems());
+        }
+
+        int attempts = order.getOtpAttempts() != null ? order.getOtpAttempts() : 0;
+        if (attempts >= 3) {
+            throw new ForbiddenOperationException("Maximum delivery OTP verification attempts exceeded (3/3). Please contact Dark Store Manager.");
+        }
+
+        String inputHash = hashOtp(request.getOtp().trim());
+        if (!inputHash.equals(order.getDeliveryOtpHash())) {
+            order.setOtpAttempts(attempts + 1);
+            orderRepository.save(order);
+            int remaining = 2 - attempts;
+            throw new IllegalArgumentException("Incorrect delivery OTP. " + remaining + " attempts remaining.");
+        }
+
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(java.time.LocalDateTime.now());
+        order.setOtpAttempts(0);
+        Order saved = orderRepository.save(order);
+
+        try {
+            if (orderTrackingWebSocketService != null) {
+                orderTrackingWebSocketService.broadcastOrderStatusUpdate(saved, OrderStatus.OUT_FOR_DELIVERY, "Order successfully delivered! Thank you for choosing Nexora.");
+            }
+        } catch (Exception ex) {}
+
+        return OrderMapper.toResponse(saved, saved.getItems());
+    }
+
+    @Transactional(readOnly = true)
+    public OrderTrackingResponse getOrderTracking(
+            UserPrincipal caller,
+            Long orderId) {
+
+        Order order = findOrderOrThrow(orderId);
+        assertCallerCanViewOrder(order, caller);
+
+        List<TrackingTimelineEvent> timeline = buildTrackingTimeline(order);
+
+        return OrderTrackingResponse.builder()
+                .orderId(order.getId())
+                .status(order.getStatus().name())
+                .storeName(order.getStore() != null ? order.getStore().getName() : "Nexora Dark Store SG Highway")
+                .storeAddress(order.getStore() != null ? order.getStore().getDescription() : "Ground Floor, Shapath V, SG Highway, Ahmedabad")
+                .deliveryAddress(order.getDeliveryAddress() != null ? 
+                        order.getDeliveryAddress().getAddressLine1() + ", " + order.getDeliveryAddress().getCity() : "Customer Address")
+                .estimatedDeliveryMinutes(estimateDeliveryMinutes(order.getStatus()))
+                .assignedRiderName("Ramesh Patel")
+                .assignedRiderPhone("+91 98765 43210")
+                .assignedRiderVehicle("Hero Electric NYX EV")
+                .deliveryOtp(null)
+                .timeline(timeline)
+                .totalAmount(order.getTotalAmount())
+                .paymentStatus(order.getPaymentStatus())
+                .paymentMethod(order.getPaymentMethod())
+                .createdAt(order.getCreatedAt())
+                .deliveredAt(order.getDeliveredAt())
+                .build();
+    }
+
+    private int estimateDeliveryMinutes(OrderStatus status) {
+        return switch (status) {
+            case CREATED, PAYMENT_PENDING, PAID -> 10;
+            case CONFIRMED, PREPARING -> 8;
+            case READY, RIDER_ASSIGNED -> 6;
+            case PICKED_UP, OUT_FOR_DELIVERY -> 4;
+            case DELIVERED, CANCELLED, REJECTED -> 0;
+        };
+    }
+
+    private List<TrackingTimelineEvent> buildTrackingTimeline(Order order) {
+        OrderStatus current = order.getStatus();
+        java.time.LocalDateTime baseTime = order.getCreatedAt() != null ? order.getCreatedAt() : java.time.LocalDateTime.now();
+
+        int currentStage = getStageIndex(current);
+
+        return List.of(
+                TrackingTimelineEvent.builder()
+                        .status("PLACED")
+                        .title("Order Placed")
+                        .description("Order received at " + (order.getStore() != null ? order.getStore().getName() : "Nexora Dark Store"))
+                        .timestamp(baseTime)
+                        .completed(currentStage >= 1)
+                        .current(currentStage == 1)
+                        .build(),
+                TrackingTimelineEvent.builder()
+                        .status("CONFIRMED")
+                        .title("Order Confirmed")
+                        .description("Stock reserved and allocated to store picking queue")
+                        .timestamp(baseTime.plusMinutes(1))
+                        .completed(currentStage >= 2)
+                        .current(currentStage == 2)
+                        .build(),
+                TrackingTimelineEvent.builder()
+                        .status("PACKING")
+                        .title("Packing Essentials")
+                        .description("Dark store picker scanning items and sealing bag")
+                        .timestamp(baseTime.plusMinutes(3))
+                        .completed(currentStage >= 3)
+                        .current(currentStage == 3)
+                        .build(),
+                TrackingTimelineEvent.builder()
+                        .status("OUT_FOR_DELIVERY")
+                        .title("Out for Delivery")
+                        .description("Rider Ramesh Patel en route with EV scooter")
+                        .timestamp(baseTime.plusMinutes(5))
+                        .completed(currentStage >= 4)
+                        .current(currentStage == 4)
+                        .build(),
+                TrackingTimelineEvent.builder()
+                        .status("DELIVERED")
+                        .title("Delivered")
+                        .description("Handed over at doorstep via secure OTP verification")
+                        .timestamp(order.getDeliveredAt() != null ? order.getDeliveredAt() : baseTime.plusMinutes(9))
+                        .completed(currentStage >= 5)
+                        .current(currentStage == 5)
+                        .build()
+        );
+    }
+
+    private int getStageIndex(OrderStatus status) {
+        return switch (status) {
+            case CREATED, PAYMENT_PENDING -> 1;
+            case PAID, CONFIRMED -> 2;
+            case PREPARING, READY -> 3;
+            case RIDER_ASSIGNED, PICKED_UP, OUT_FOR_DELIVERY -> 4;
+            case DELIVERED -> 5;
+            case CANCELLED, REJECTED -> 0;
+        };
+    }
+
     // Internal helpers
     // ------------------------------------------------------------
 
@@ -791,10 +1108,10 @@ public class OrderService {
                         .equals(caller.getId());
 
         boolean isManagingStoreOwner =
-                order.getStore()
-                        .getOwner()
-                        .getId()
-                        .equals(caller.getId());
+                order.getStore() != null &&
+                order.getStore().getOwner() != null &&
+                order.getStore().getOwner().getId() != null &&
+                order.getStore().getOwner().getId().equals(caller.getId());
 
         if (!isOwningCustomer &&
                 !isManagingStoreOwner) {

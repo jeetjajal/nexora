@@ -18,27 +18,6 @@ import java.util.Set;
  *   Order (Many) -> Store (One)            [@ManyToOne]
  *   Order (Many) -> Address (One)          [@ManyToOne] - delivery destination
  *   Order (One) <-> OrderItem (Many)       [@OneToMany]
- *
- * WHY ONE STORE PER ORDER?
- * A customer's Cart (Phase 7) can hold products from several
- * different stores at once, but a real order/fulfillment/delivery
- * happens per-store - one restaurant prepares and hands off one
- * package; it can't jointly fulfill an order that's half groceries
- * from one store and half pizza from another. So checkout (see
- * OrderService.checkout) splits a multi-store cart into one Order PER
- * STORE, each with only that store's items. This also matches the
- * `orders` table design from the very first project brief, which
- * already specified a single store_id column per order.
- *
- * WHY totalAmount, subtotal, deliveryFee ARE ALL STORED (not derived
- * on the fly like Cart's subtotal was):
- * A Cart's totals must always reflect LIVE product prices (Phase 7) -
- * nothing has been purchased yet. An Order is the opposite: it's a
- * historical record of what was actually agreed to at checkout time.
- * If a store later changes a product's price, every past order must
- * still show what the customer actually paid, unchanged forever. So
- * these totals are computed once, at order-creation time, and stored
- * - never recalculated from current Product data afterward.
  */
 @Entity
 @Table(
@@ -85,6 +64,24 @@ public class Order {
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
+
+    @Column(name = "delivery_otp_hash", length = 64)
+    private String deliveryOtpHash;
+
+    @Column(name = "otp_attempts")
+    @Builder.Default
+    private Integer otpAttempts = 0;
+
+    @Column(name = "payment_method", length = 30)
+    @Builder.Default
+    private String paymentMethod = "RAZORPAY";
+
+    @Column(name = "payment_status", length = 30)
+    @Builder.Default
+    private String paymentStatus = "PENDING";
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonManagedReference

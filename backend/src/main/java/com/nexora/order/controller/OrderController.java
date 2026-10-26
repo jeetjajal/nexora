@@ -2,6 +2,9 @@ package com.nexora.order.controller;
 
 import com.nexora.auth.security.UserPrincipal;
 import com.nexora.common.ApiResponse;
+import com.nexora.order.dto.DirectCheckoutRequest;
+import com.nexora.order.dto.VerifyDeliveryOtpRequest;
+import com.nexora.order.dto.OrderTrackingResponse;
 import com.nexora.order.dto.CheckoutRequest;
 import com.nexora.order.dto.OrderResponse;
 import com.nexora.order.dto.OrderStatusUpdateRequest;
@@ -123,4 +126,47 @@ public class OrderController {
         Page<OrderResponse> response = orderService.getStoreOrders(principal, storeId, pageable);
         return ResponseEntity.ok(ApiResponse.success("Store orders fetched successfully", response));
     }
+
+    /**
+     * PHASE 6: Direct transactional checkout with authoritative server pricing
+     * and atomic stock reduction.
+     */
+    @PostMapping("/api/v1/orders/direct")
+    public ResponseEntity<ApiResponse<OrderResponse>> directCheckout(
+            @Valid @RequestBody DirectCheckoutRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        OrderResponse response = orderService.directCheckout(principal, request, idempotencyKey);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Order placed successfully and routed to dark store", response));
+    }
+
+    /**
+     * PHASE 6: Real-time customer order tracking with status timeline.
+     */
+    @GetMapping("/api/v1/orders/{id}/tracking")
+    public ResponseEntity<ApiResponse<OrderTrackingResponse>> getOrderTracking(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        OrderTrackingResponse response = orderService.getOrderTracking(principal, id);
+        return ResponseEntity.ok(ApiResponse.success("Order tracking fetched successfully", response));
+    }
+
+    /**
+     * PHASE 6: Delivery Partner OTP verification at doorstep.
+     */
+    @PostMapping("/api/v1/orders/{id}/verify-delivery")
+    @PreAuthorize("hasAnyRole('DELIVERY_PARTNER','STORE_OWNER','ADMIN')")
+    public ResponseEntity<ApiResponse<OrderResponse>> verifyDeliveryOtp(
+            @PathVariable Long id,
+            @Valid @RequestBody VerifyDeliveryOtpRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        OrderResponse response = orderService.verifyDeliveryOtp(principal, id, request);
+        return ResponseEntity.ok(ApiResponse.success("Delivery OTP verified. Order marked as DELIVERED.", response));
+    }
+
 }

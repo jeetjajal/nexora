@@ -25,6 +25,11 @@ public class OrderResponse {
     private BigDecimal subtotal;
     private BigDecimal deliveryFee;
     private BigDecimal totalAmount;
+    private String deliveryOtp;
+    private String paymentMethod;
+    private String paymentStatus;
+    private String assignedRiderName;
+    private String assignedRiderPhone;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
