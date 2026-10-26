@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, PRODUCTS } from '@/data/products';
 import { Category, CATEGORIES } from '@/data/categories';
-import { ApiClient, CheckoutPayload } from '@/lib/api-client';
+import { ApiClient, CheckoutPayload, UserProfile, SavedAddress, PastOrder } from '@/lib/api-client';
 
 export type AppRole = 'customer' | 'delivery' | 'admin' | 'store';
 
@@ -35,6 +35,17 @@ export interface ActiveOrder {
 interface AppContextType {
   role: AppRole;
   setRole: (role: AppRole) => void;
+  currentUser: UserProfile | null;
+  savedAddresses: SavedAddress[];
+  pastOrders: PastOrder[];
+  isAuthOpen: boolean;
+  setIsAuthOpen: (open: boolean) => void;
+  isAccountOpen: boolean;
+  setIsAccountOpen: (open: boolean) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  logout: () => void;
+  addNewAddress: (addressData: Partial<SavedAddress>) => Promise<SavedAddress>;
   categories: Category[];
   products: Product[];
   isLoadingCatalog: boolean;
@@ -76,6 +87,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
 
+  // Phase 5: Customer Auth & Profile State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>({
+    id: 1,
+    name: 'Jeet Jajal',
+    email: 'aditi@nexora.in',
+    phone: '9876543210',
+    status: 'ACTIVE',
+    roles: ['ROLE_CUSTOMER'],
+    accessToken: 'demo_token_authenticated',
+  });
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [pastOrders, setPastOrders] = useState<PastOrder[]>([]);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+
   const [cart, setCart] = useState<{ [productId: string]: number }>({});
   const [couponCode, setCouponCode] = useState<string>('');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
@@ -98,12 +124,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ApiClient.getProducts(),
       ]);
 
-      if (fetchedCategories.length > 0) {
-        setCategories(fetchedCategories);
-      }
-      if (fetchedProducts.length > 0) {
-        setProducts(fetchedProducts);
-      }
+      if (fetchedCategories.length > 0) setCategories(fetchedCategories);
+      if (fetchedProducts.length > 0) setProducts(fetchedProducts);
     } catch {
       // Retain fallback data
     } finally {
@@ -111,9 +133,54 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  // Fetch addresses and order history on mount
   useEffect(() => {
     refreshCatalog();
+
+    // Fetch initial saved addresses
+    ApiClient.getAddresses().then(addrs => {
+      if (addrs && addrs.length > 0) setSavedAddresses(addrs);
+    });
+
+    // Fetch past orders
+    ApiClient.getOrderHistory().then(orders => {
+      if (orders && orders.length > 0) setPastOrders(orders);
+    });
   }, [refreshCatalog]);
+
+  // Auth: Login
+  const login = async (email: string, password: string) => {
+    const user = await ApiClient.login(email, password);
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexora_user', JSON.stringify(user));
+    }
+  };
+
+  // Auth: Register
+  const register = async (name: string, email: string, phone: string, password: string) => {
+    const user = await ApiClient.register(name, email, phone, password);
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('nexora_user', JSON.stringify(user));
+    }
+  };
+
+  // Auth: Logout
+  const logout = () => {
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('nexora_user');
+    }
+    setIsAccountOpen(false);
+  };
+
+  // Address: Add New Address
+  const addNewAddress = async (addressData: Partial<SavedAddress>): Promise<SavedAddress> => {
+    const saved = await ApiClient.addAddress(addressData, currentUser?.accessToken);
+    setSavedAddresses(prev => [saved, ...prev]);
+    return saved;
+  };
 
   // Load starter items in cart for smooth first-time demo
   useEffect(() => {
@@ -211,6 +278,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setActiveOrder(newOrder);
+
+    // Append to past orders
+    setPastOrders(prev => [
+      {
+        orderId: newOrder.id,
+        date: 'Just now',
+        itemsCount: items.length,
+        itemsSummary: items.map(i => `${i.product.name} (${i.quantity})`).join(', '),
+        amount: finalTotal,
+        status: 'PLACED',
+        darkStore: newOrder.darkStore || 'Nexora Dark Store SG Highway #04',
+        deliveryOtp: newOrder.deliveryOtp,
+        paymentMethod,
+      },
+      ...prev,
+    ]);
+
     clearCart();
     setIsCheckoutOpen(false);
     setIsCartOpen(false);
@@ -255,6 +339,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setActiveOrder(newOrder);
+
+    // Append to past orders
+    setPastOrders(prev => [
+      {
+        orderId: newOrder.id,
+        date: 'Just now',
+        itemsCount: items.length,
+        itemsSummary: items.map(i => `${i.product.name} (${i.quantity})`).join(', '),
+        amount: res.finalAmount || finalTotal,
+        status: 'PLACED',
+        darkStore: newOrder.darkStore || 'Nexora Dark Store SG Highway #04',
+        deliveryOtp: newOrder.deliveryOtp,
+        paymentMethod: payload.paymentMethod,
+      },
+      ...prev,
+    ]);
+
     clearCart();
     setIsCheckoutOpen(false);
     setIsCartOpen(false);
@@ -276,6 +377,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         role,
         setRole,
+        currentUser,
+        savedAddresses,
+        pastOrders,
+        isAuthOpen,
+        setIsAuthOpen,
+        isAccountOpen,
+        setIsAccountOpen,
+        login,
+        register,
+        logout,
+        addNewAddress,
         categories,
         products,
         isLoadingCatalog,

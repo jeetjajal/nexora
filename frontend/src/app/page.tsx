@@ -11,6 +11,8 @@ import { CartDrawer } from '@/components/customer/CartDrawer';
 import { CheckoutModal } from '@/components/customer/CheckoutModal';
 import { OrderTrackingModal } from '@/components/customer/OrderTrackingModal';
 import { AIChatbot } from '@/components/customer/AIChatbot';
+import { AuthModal } from '@/components/customer/AuthModal';
+import { AccountModal } from '@/components/customer/AccountModal';
 import { DeliveryApp } from '@/components/delivery/DeliveryApp';
 import { SuperAdminDashboard } from '@/components/admin/SuperAdminDashboard';
 import { StoreOps } from '@/components/store/StoreOps';
@@ -215,6 +217,8 @@ export default function HomePage() {
       <CheckoutModal />
       <OrderTrackingModal />
       <AIChatbot />
+      <AuthModal />
+      <AccountModal />
       <WelcomeModal isOpen={isWelcomeOpen} onClose={() => setIsWelcomeOpen(false)} />
     </div>
   );

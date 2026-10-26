@@ -29,6 +29,43 @@ export interface Product {
   brand?: string;
 }
 
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  roles: string[];
+  accessToken?: string;
+}
+
+export interface SavedAddress {
+  id: number;
+  label: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state?: string;
+  pincode: string;
+  country?: string;
+  isDefault: boolean;
+  serviceable?: boolean;
+  darkStore?: string;
+  eta?: string;
+}
+
+export interface PastOrder {
+  orderId: string;
+  date: string;
+  itemsCount: number;
+  itemsSummary: string;
+  amount: number;
+  status: string;
+  darkStore: string;
+  deliveryOtp: string;
+  paymentMethod: string;
+}
+
 export interface CheckoutPayload {
   items: {
     productId: string;
@@ -69,28 +106,6 @@ const IS_SERVER = typeof window === 'undefined';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || (IS_SERVER ? 'http://localhost:8080' : '');
 
 export class ApiClient {
-  private static async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = endpoint.startsWith('http') ? endpoint : `${BACKEND_URL}${endpoint}`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...(options.headers || {}),
-    };
-
-    const res = await fetch(url, {
-      ...options,
-      headers,
-      cache: options.cache || 'no-store',
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error(errorData.message || `API Error: ${res.status}`);
-    }
-
-    return res.json();
-  }
-
   // Categories
   static async getCategories(): Promise<Category[]> {
     try {
@@ -99,7 +114,6 @@ export class ApiClient {
       const json = await res.json();
       return json.data || [];
     } catch {
-      // Fallback
       return [];
     }
   }
@@ -113,6 +127,101 @@ export class ApiClient {
 
       const res = await fetch(`/api/products?${searchParams.toString()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch products');
+      const json = await res.json();
+      return json.data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  // Auth: Login
+  static async login(email: string, password: string): Promise<UserProfile> {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Login failed');
+    }
+
+    return json.data;
+  }
+
+  // Auth: Register
+  static async register(name: string, email: string, phone: string, password: string): Promise<UserProfile> {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, phone, password }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Registration failed');
+    }
+
+    return json.data;
+  }
+
+  // Auth: Get Current Profile
+  static async getMe(token: string): Promise<UserProfile> {
+    const res = await fetch('/api/auth/me', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Failed to fetch user profile');
+    }
+
+    return json.data;
+  }
+
+  // Addresses: List Saved Addresses
+  static async getAddresses(token?: string): Promise<SavedAddress[]> {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/addresses', { headers });
+      if (!res.ok) throw new Error('Failed to fetch addresses');
+      const json = await res.json();
+      return json.data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  // Addresses: Add New Address with Serviceability Check
+  static async addAddress(addressData: Partial<SavedAddress>, token?: string): Promise<SavedAddress> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/addresses', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(addressData),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Address could not be added');
+    }
+
+    return json.data;
+  }
+
+  // Orders: Past Order History
+  static async getOrderHistory(token?: string): Promise<PastOrder[]> {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch('/api/orders/history', { headers });
+      if (!res.ok) throw new Error('Failed to fetch orders');
       const json = await res.json();
       return json.data || [];
     } catch {
