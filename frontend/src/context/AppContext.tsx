@@ -44,8 +44,11 @@ interface AppContextType {
   setIsAccountOpen: (open: boolean) => void;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  updateProfile: (name: string, phone: string) => Promise<void>;
   logout: () => void;
   addNewAddress: (addressData: Partial<SavedAddress>) => Promise<SavedAddress>;
+  setDefaultAddress: (id: number) => Promise<void>;
+  deleteAddress: (id: number) => Promise<void>;
   categories: Category[];
   products: Product[];
   isLoadingCatalog: boolean;
@@ -166,6 +169,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Auth: Update Profile
+  const updateProfile = async (name: string, phone: string) => {
+    const updated = await ApiClient.updateProfile(name, phone, currentUser?.accessToken);
+    setCurrentUser(prev => prev ? { ...prev, name: updated.name, phone: updated.phone } : updated);
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('nexora_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localStorage.setItem('nexora_user', JSON.stringify({ ...parsed, name: updated.name, phone: updated.phone }));
+      }
+    }
+  };
+
   // Auth: Logout
   const logout = () => {
     setCurrentUser(null);
@@ -180,6 +196,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = await ApiClient.addAddress(addressData, currentUser?.accessToken);
     setSavedAddresses(prev => [saved, ...prev]);
     return saved;
+  };
+
+  // Address: Set Default Address
+  const setDefaultAddress = async (id: number) => {
+    await ApiClient.setDefaultAddress(id, currentUser?.accessToken);
+    setSavedAddresses(prev => prev.map(a => ({
+      ...a,
+      isDefault: a.id === id,
+    })));
+  };
+
+  // Address: Delete Address
+  const deleteAddress = async (id: number) => {
+    await ApiClient.deleteAddress(id, currentUser?.accessToken);
+    setSavedAddresses(prev => prev.filter(a => a.id !== id));
   };
 
   // Load starter items in cart for smooth first-time demo
@@ -386,8 +417,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAccountOpen,
         login,
         register,
+        updateProfile,
         logout,
         addNewAddress,
+        setDefaultAddress,
+        deleteAddress,
         categories,
         products,
         isLoadingCatalog,

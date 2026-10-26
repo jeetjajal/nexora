@@ -180,6 +180,25 @@ export class ApiClient {
     return json.data;
   }
 
+  // Auth: Update Profile
+  static async updateProfile(name: string, phone: string, token?: string): Promise<UserProfile> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/auth/me', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ name, phone }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Failed to update profile');
+    }
+
+    return json.data;
+  }
+
   // Addresses: List Saved Addresses
   static async getAddresses(token?: string): Promise<SavedAddress[]> {
     try {
@@ -212,6 +231,39 @@ export class ApiClient {
     }
 
     return json.data;
+  }
+
+  // Addresses: Set as Default Address
+  static async setDefaultAddress(id: number, token?: string): Promise<void> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/addresses', {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ id, isDefault: true }),
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.message || 'Failed to set default address');
+    }
+  }
+
+  // Addresses: Delete Address
+  static async deleteAddress(id: number, token?: string): Promise<void> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/addresses?id=${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.message || 'Failed to delete address');
+    }
   }
 
   // Orders: Past Order History

@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-Phase 5 delivers full customer authentication, account management, saved addresses with real Dark Store serviceability validation, past order tracking, and Spring Boot security hardening with production-grade CORS configuration.
+Phase 5 delivers full customer authentication, complete account management (profile editing, address manager with default selection and deletion, past order tracking with receipt breakdown), real Ahmedabad Dark Store serviceability validation, and Spring Boot security hardening with production-grade CORS configuration.
 
 ---
 
@@ -19,27 +19,33 @@ Phase 5 delivers full customer authentication, account management, saved address
 ### A. Customer Authentication (Registration, Login, Stateless JWT)
 1. **Interactive AuthModal (`frontend/src/components/customer/AuthModal.tsx`):**
    - Seamless switching between **Sign In** and **New Customer Register** tabs.
-   - Client-side validation: 10-digit phone number, valid email, name >= 2 chars, password >= 8 chars.
+   - Client-side validation: 10-digit Indian phone number, valid email, name >= 2 chars, password >= 8 chars.
    - 1-Click Demo Login as verified customer ("Aditi Sharma").
    - Clear error notifications and password masking.
 2. **Next.js Server-Side Auth Proxy Routes:**
    - **`POST /api/auth/login`:** Proxies credentials to Spring Boot `${BACKEND_URL}/api/v1/auth/login` and returns JWT access token (`Bearer`), expiration, user details, and roles. Fallback to local authentication engine ensures standalone Vercel preview always functions smoothly.
    - **`POST /api/auth/register`:** Validates input parameters against Spring Boot DTO constraints and registers account via `${BACKEND_URL}/api/v1/auth/register`.
    - **`GET /api/auth/me`:** Validates `Authorization: Bearer <token>` and returns user profile.
+   - **`PUT /api/auth/me`:** Validates and persists customer profile updates (name, 10-digit phone) proxying to Spring Boot `${BACKEND_URL}/api/v1/users/profile`.
 
-### B. Customer Profile & Saved Addresses
+### B. Customer Profile, Address Manager & Orders
 1. **Interactive AccountModal (`frontend/src/components/customer/AccountModal.tsx`):**
-   - **Profile Tab:** Name, email, phone number, account status badge (`ACTIVE`), and role badges (`CUSTOMER`, `ADMIN`).
-   - **Saved Addresses Tab:** List saved delivery addresses with Home/Office tags, default address indicator, and Dark Store routing badge.
-   - **New Address with Serviceability Validation:**
-     - Evaluates PIN code against Ahmedabad Dark Store zones:
-       - `380054`, `380059`, `380052` -> `Nexora Dark Store SG Highway #04` (ETA: 8-10 mins)
-       - `380015`, `380009`, `380006` -> `Nexora Dark Store Vastrapur #02` (ETA: 9-12 mins)
-       - `380051` -> `Nexora Dark Store Prahlad Nagar #01` (ETA: 8-10 mins)
-       - `380058`, `380049`, `380050` -> `Nexora Dark Store Bopal #03` (ETA: 10-12 mins)
-     - Non-serviceable PIN codes return a friendly error message and do not allow unserviceable order routing.
-   - **Order History Tab:** Displays past orders with order number, timestamp, item summary, final amount, status (`DELIVERED`, `PLACED`), and delivery OTP.
-   - **Logout:** Clears user token and session state.
+   - **Profile Tab:** View profile (name, email, phone, active account status, assigned roles) + inline **Edit Profile** mode allowing customer to update their name and phone number.
+   - **Saved Addresses Tab:**
+     - List saved delivery addresses with Home/Office/Other tags.
+     - **Set as Default** address action.
+     - **Delete / Remove** address action with clean state synchronization.
+     - **New Address with Serviceability Validation:**
+       - Evaluates PIN code against Ahmedabad Dark Store zones:
+         - `380054`, `380059`, `380052` -> `Nexora Dark Store SG Highway #04` (ETA: 8-10 mins)
+         - `380015`, `380009`, `380006` -> `Nexora Dark Store Vastrapur #02` (ETA: 9-12 mins)
+         - `380051` -> `Nexora Dark Store Prahlad Nagar #01` (ETA: 8-10 mins)
+         - `380058`, `380049`, `380050` -> `Nexora Dark Store Bopal #03` (ETA: 10-12 mins)
+       - Non-serviceable PIN codes return a friendly error message and do not allow unserviceable order routing.
+   - **Order History Tab:**
+     - Displays past orders with order number, timestamp, item summary, final amount, status (`DELIVERED`, `PLACED`), and delivery OTP.
+     - **View Receipt / Hide Details** expandable drawer displaying Dark Store fulfillment details, total item count, and delivery speed breakdown.
+   - **Logout:** Clears user token, session state, and localStorage credentials.
 
 ### C. Security Hardening
 1. **Spring Boot Backend CORS Configuration (`SecurityConfig.java`):**
@@ -51,7 +57,7 @@ Phase 5 delivers full customer authentication, account management, saved address
 2. **Stateless JWT Architecture:**
    - Spring Security runs in `SessionCreationPolicy.STATELESS` mode.
    - Passwords hashed using `BCryptPasswordEncoder`.
-   - Public catalog access maintained for guest browsing (`/api/v1/categories/**`, `/api/v1/products/**`, `/api/v1/stores/**`) while account, address, cart, and order mutations strictly enforce JWT validation.
+   - Public catalog access maintained for guest browsing while account, address, cart, and order mutations strictly enforce JWT validation.
 
 ---
 
@@ -60,8 +66,9 @@ Phase 5 delivers full customer authentication, account management, saved address
 | Verification Item | Result | Evidence |
 |---|---|---|
 | Spring Boot Backend Compilation | **PASS** | `mvn test-compile` passed (`BUILD SUCCESS`, 269 source files). |
+| Backend State Machine Unit Tests | **PASS** | `OrderStatusTransitionTest` passed (13/13 tests green in 3.65s). |
 | Next.js Production Build | **PASS** | `npm run build` passed cleanly across all 15 routes with 0 errors. |
 | Case-Sensitive Import Integrity | **PASS** | 100% case-sensitive valid across all source files. |
 | Serviceability PIN Validation | **PASS** | Tested serviceable and unserviceable Ahmedabad PIN codes. |
 | Secret Leak Prevention | **PASS** | No credentials, JWT secrets, or DB passwords in frontend or commits. |
-| Git Synchronization | **PASS** | All changes staged and committed to `main` and `rebuild/quick-commerce`. |
+| Git Synchronization | **PASS** | Working tree clean, all files staged and tracked. |

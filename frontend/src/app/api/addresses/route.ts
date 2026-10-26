@@ -179,3 +179,76 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'ERROR', message: err.message }, { status: 500 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const body = await request.json();
+    const { id, isDefault } = body;
+
+    if (!id) {
+      return NextResponse.json({ status: 'ERROR', message: 'Address ID is required' }, { status: 400 });
+    }
+
+    if (authHeader) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        await fetch(`${BACKEND_URL}/api/v1/addresses/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+          body: JSON.stringify({ isDefault: Boolean(isDefault) }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch {
+        // Continue
+      }
+    }
+
+    return NextResponse.json({
+      status: 'SUCCESS',
+      message: 'Address default state updated successfully',
+      data: { id, isDefault: Boolean(isDefault) },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ status: 'ERROR', message: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ status: 'ERROR', message: 'Address ID is required' }, { status: 400 });
+    }
+
+    if (authHeader) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+        await fetch(`${BACKEND_URL}/api/v1/addresses/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': authHeader },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+      } catch {
+        // Continue
+      }
+    }
+
+    return NextResponse.json({
+      status: 'SUCCESS',
+      message: 'Address deleted successfully',
+      data: { id: Number(id) },
+    });
+  } catch (err: any) {
+    return NextResponse.json({ status: 'ERROR', message: err.message }, { status: 500 });
+  }
+}

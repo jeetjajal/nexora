@@ -15,6 +15,9 @@ import {
   Building,
   AlertCircle,
   Truck,
+  Edit2,
+  Trash2,
+  Check,
 } from 'lucide-react';
 
 export const AccountModal: React.FC = () => {
@@ -24,11 +27,23 @@ export const AccountModal: React.FC = () => {
     currentUser,
     savedAddresses,
     pastOrders,
+    updateProfile,
     logout,
     addNewAddress,
+    setDefaultAddress,
+    deleteAddress,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'PROFILE' | 'ADDRESSES' | 'ORDERS'>('PROFILE');
+  
+  // Profile edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState(currentUser?.name || '');
+  const [profilePhone, setProfilePhone] = useState(currentUser?.phone || '');
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  // Address add states
   const [isAddingAddr, setIsAddingAddr] = useState(false);
   const [addrForm, setAddrForm] = useState({
     label: 'Home',
@@ -41,7 +56,33 @@ export const AccountModal: React.FC = () => {
   const [addrSuccess, setAddrSuccess] = useState<string | null>(null);
   const [isSavingAddr, setIsSavingAddr] = useState(false);
 
+  // Order detail expansion state
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
   if (!isAccountOpen || !currentUser) return null;
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileMsg(null);
+    setIsUpdatingProfile(true);
+
+    try {
+      if (!profileName.trim() || profileName.trim().length < 2) {
+        throw new Error('Name must be at least 2 characters long');
+      }
+      if (!profilePhone.trim() || !/^[6-9]\d{9}$/.test(profilePhone.replace(/[\s+-]/g, '').slice(-10))) {
+        throw new Error('Please enter a valid 10-digit Indian phone number');
+      }
+
+      await updateProfile(profileName.trim(), profilePhone.trim());
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditingProfile(false);
+    } catch (err: any) {
+      setProfileMsg({ type: 'error', text: err.message || 'Failed to update profile' });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +110,22 @@ export const AccountModal: React.FC = () => {
       setAddrError(err.message || 'Failed to save address');
     } finally {
       setIsSavingAddr(false);
+    }
+  };
+
+  const handleDeleteAddr = async (id: number) => {
+    try {
+      await deleteAddress(id);
+    } catch (err: any) {
+      setAddrError(err.message || 'Could not remove address');
+    }
+  };
+
+  const handleSetDefaultAddr = async (id: number) => {
+    try {
+      await setDefaultAddress(id);
+    } catch (err: any) {
+      setAddrError(err.message || 'Could not set default address');
     }
   };
 
@@ -150,28 +207,96 @@ export const AccountModal: React.FC = () => {
           {/* 1. Profile Tab */}
           {activeTab === 'PROFILE' && (
             <div className="space-y-4">
-              <div className="bg-brand-bg p-4 rounded-card border border-brand-border space-y-3">
-                <h4 className="font-black text-brand-text text-sm">Customer Account Information</h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-[11px] text-brand-muted block">Full Name</span>
-                    <p className="font-bold text-brand-text">{currentUser.name}</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-brand-muted block">Registered Email</span>
-                    <p className="font-bold text-brand-text">{currentUser.email}</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-brand-muted block">Phone Number</span>
-                    <p className="font-bold text-brand-text font-mono">{currentUser.phone}</p>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-brand-muted block">Account Status</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full mt-0.5">
-                      <CheckCircle2 size={11} /> {currentUser.status || 'ACTIVE'}
-                    </span>
-                  </div>
+              {profileMsg && (
+                <div
+                  className={`p-2.5 rounded border text-xs flex items-center gap-1.5 ${
+                    profileMsg.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-red-50 text-red-700 border-red-200'
+                  }`}
+                >
+                  {profileMsg.type === 'success' ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+                  <span>{profileMsg.text}</span>
                 </div>
+              )}
+
+              <div className="bg-brand-bg p-4 rounded-card border border-brand-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-black text-brand-text text-sm">Customer Profile Information</h4>
+                  <button
+                    onClick={() => {
+                      setIsEditingProfile(!isEditingProfile);
+                      setProfileName(currentUser.name);
+                      setProfilePhone(currentUser.phone);
+                    }}
+                    className="text-[11px] font-bold text-brand-primary hover:underline flex items-center gap-1"
+                  >
+                    <Edit2 size={12} />
+                    <span>{isEditingProfile ? 'Cancel' : 'Edit Profile'}</span>
+                  </button>
+                </div>
+
+                {isEditingProfile ? (
+                  <form onSubmit={handleUpdateProfile} className="space-y-3 pt-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-brand-muted mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={profileName}
+                        onChange={(e) => setProfileName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-brand-border rounded text-xs font-semibold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-brand-muted mb-1">Phone Number (10 digits)</label>
+                      <input
+                        type="tel"
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-brand-border rounded text-xs font-mono font-semibold"
+                        required
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="submit"
+                        disabled={isUpdatingProfile}
+                        className="px-4 py-2 bg-brand-primary text-white font-bold rounded text-xs hover:bg-brand-primaryHover transition-colors"
+                      >
+                        {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingProfile(false)}
+                        className="px-3 py-2 bg-gray-100 text-brand-text font-bold rounded text-xs hover:bg-gray-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="text-[11px] text-brand-muted block">Full Name</span>
+                      <p className="font-bold text-brand-text">{currentUser.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-brand-muted block">Registered Email</span>
+                      <p className="font-bold text-brand-text">{currentUser.email}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-brand-muted block">Phone Number</span>
+                      <p className="font-bold text-brand-text font-mono">{currentUser.phone}</p>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-brand-muted block">Account Status</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full mt-0.5">
+                        <CheckCircle2 size={11} /> {currentUser.status || 'ACTIVE'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white p-4 rounded-card border border-brand-border flex items-center justify-between">
@@ -317,10 +442,17 @@ export const AccountModal: React.FC = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-brand-text">{a.label}</span>
-                          {a.isDefault && (
-                            <span className="text-[9px] bg-brand-primary/10 text-brand-primary font-bold px-1.5 py-0.2 rounded">
-                              Default
+                          {a.isDefault ? (
+                            <span className="text-[9px] bg-brand-primary/10 text-brand-primary font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                              <Check size={9} /> Default
                             </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSetDefaultAddr(a.id)}
+                              className="text-[9px] text-brand-muted hover:text-brand-primary hover:underline font-bold"
+                            >
+                              Set as Default
+                            </button>
                           )}
                           <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5">
                             <Clock size={10} /> {a.eta || '8-10 MINS'}
@@ -334,6 +466,14 @@ export const AccountModal: React.FC = () => {
                         </p>
                       </div>
                     </div>
+
+                    <button
+                      onClick={() => handleDeleteAddr(a.id)}
+                      title="Remove Address"
+                      className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -356,34 +496,64 @@ export const AccountModal: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pastOrders.map((o) => (
-                    <div
-                      key={o.orderId}
-                      className="p-3.5 bg-white rounded-card border border-brand-border shadow-sm space-y-2 hover:border-brand-primary/30 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-brand-text text-xs">{o.orderId}</span>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 size={10} /> {o.status}
-                          </span>
-                        </div>
-                        <span className="font-black text-brand-primary text-sm">₹{o.amount}</span>
-                      </div>
+                  {pastOrders.map((o) => {
+                    const isExpanded = expandedOrderId === o.orderId;
 
-                      <p className="text-[11px] text-brand-text font-medium">{o.itemsSummary}</p>
-
-                      <div className="flex items-center justify-between pt-2 border-t border-brand-border/60 text-[10px] text-brand-muted">
-                        <span>{o.date} • {o.paymentMethod}</span>
-                        <div className="flex items-center gap-1">
-                          <span>OTP:</span>
-                          <span className="font-mono font-bold text-brand-text bg-brand-bg px-1.5 py-0.5 rounded border border-brand-border">
-                            {o.deliveryOtp}
-                          </span>
+                    return (
+                      <div
+                        key={o.orderId}
+                        className="p-3.5 bg-white rounded-card border border-brand-border shadow-sm space-y-2 hover:border-brand-primary/30 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-brand-text text-xs">{o.orderId}</span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <CheckCircle2 size={10} /> {o.status}
+                            </span>
+                          </div>
+                          <span className="font-black text-brand-primary text-sm">₹{o.amount}</span>
                         </div>
+
+                        <p className="text-[11px] text-brand-text font-medium">{o.itemsSummary}</p>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-brand-border/60 text-[10px] text-brand-muted">
+                          <span>{o.date} • {o.paymentMethod}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <span>OTP:</span>
+                              <span className="font-mono font-bold text-brand-text bg-brand-bg px-1.5 py-0.5 rounded border border-brand-border">
+                                {o.deliveryOtp}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => setExpandedOrderId(isExpanded ? null : o.orderId)}
+                              className="text-brand-primary font-bold hover:underline"
+                            >
+                              {isExpanded ? 'Hide Details' : 'View Receipt'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Expanded Receipt Breakdown */}
+                        {isExpanded && (
+                          <div className="mt-2 pt-2 border-t border-dashed border-brand-border bg-brand-bg/50 p-2.5 rounded text-[11px] space-y-1">
+                            <div className="flex justify-between text-brand-muted">
+                              <span>Dark Store Fulfillment:</span>
+                              <span className="font-bold text-brand-text">{o.darkStore}</span>
+                            </div>
+                            <div className="flex justify-between text-brand-muted">
+                              <span>Total Items:</span>
+                              <span className="font-bold text-brand-text">{o.itemsCount} Items</span>
+                            </div>
+                            <div className="flex justify-between text-brand-muted">
+                              <span>Delivery Type:</span>
+                              <span className="font-bold text-brand-primary">10-Minute Rapid EV Delivery</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
