@@ -567,6 +567,161 @@ export class ApiClient {
     const json = await res.json();
     return json.data;
   }
+
+  // Phase 8: Super Admin Control Tower Overview
+  static async getControlTowerOverview(token?: string): Promise<ControlTowerOverview> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/control-tower', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch control tower overview');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 8: Fleet Monitoring
+  static async getFleetStatus(token?: string): Promise<FleetRiderStatus[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/fleet', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch fleet status');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 8: Disputes & Refunds
+  static async getDisputes(status?: string, token?: string): Promise<DisputeRecord[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const url = status ? `/api/admin/disputes?status=${status}` : '/api/admin/disputes';
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch disputes');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async createDispute(
+    payload: { orderId: number; reason: string; customerNotes?: string; claimAmount: number },
+    token?: string
+  ): Promise<DisputeRecord> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/disputes', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to create dispute claim');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async processDisputeDecision(
+    disputeId: number,
+    payload: { decision: string; decisionNotes: string },
+    token?: string
+  ): Promise<DisputeRecord> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/admin/disputes/${disputeId}/decision`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to process dispute decision');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 8: Surge Pricing Rules
+  static async getSurgePricingRules(token?: string): Promise<SurgePricingRuleDto[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/surge-pricing', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch surge pricing');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async updateSurgePricingRule(payload: SurgePricingRuleDto, token?: string): Promise<SurgePricingRuleDto> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/surge-pricing', {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update surge pricing rule');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 8: Catalog Price Override
+  static async overrideProductPrice(
+    productId: number,
+    payload: { overridePrice: number; overrideDiscount?: number; reason: string },
+    token?: string
+  ): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/admin/catalog/products/${productId}/price-override`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to apply price override');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  // Phase 8: Bulk Catalog Import
+  static async bulkImportCatalog(csvContent: string, token?: string): Promise<BulkImportResult> {
+    const headers: Record<string, string> = { 'Content-Type': 'text/plain' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/catalog/bulk-import', {
+      method: 'POST',
+      headers,
+      body: csvContent,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Bulk catalog import failed');
+    }
+    const json = await res.json();
+    return json.data;
+  }
 }
 
 export interface StoreQueueOrder {
@@ -644,3 +799,104 @@ export interface DeliveryAssignmentDetail {
   completedAt?: string;
 }
 
+
+
+export interface HubOperationalStatus {
+  hubId: number;
+  hubName: string;
+  code: string;
+  city: string;
+  activeOrdersCount: number;
+  pickersActive: number;
+  ridersOnline: number;
+  avgPickTimeSeconds: number;
+  healthStatus: 'OPTIMAL' | 'ELEVATED' | 'CRITICAL_DELAY';
+}
+
+export interface DelayedOrderAlert {
+  orderId: number;
+  orderNumber: string;
+  storeName: string;
+  customerName: string;
+  status: string;
+  amount: number;
+  elapsedSeconds: number;
+  targetSlaSeconds: number;
+  delayedBySeconds: number;
+  createdAt: string;
+}
+
+export interface ControlTowerOverview {
+  totalOrders: number;
+  activeOrders: number;
+  delayedOrdersCount: number;
+  cancelledOrders: number;
+  refundedOrders: number;
+  grossMerchandiseValue: number;
+  deliveryFeesCollected: number;
+  netPlatformRevenue: number;
+  averageDeliveryTimeMinutes: number;
+  slaAdherencePercent: number;
+  activeHubsCount: number;
+  onlineRidersCount: number;
+  activeDisputesCount: number;
+  hubStatusList: HubOperationalStatus[];
+  delayedOrders: DelayedOrderAlert[];
+}
+
+export interface FleetRiderStatus {
+  partnerId: number;
+  userId?: number;
+  name: string;
+  phone: string;
+  vehicleType: string;
+  rating: number;
+  isOnline: boolean;
+  currentStatus: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
+  activeOrderId?: number;
+  currentLat?: number;
+  currentLng?: number;
+  todayEarnings: number;
+  lastPingTime: string;
+  isStaleLocation: boolean;
+}
+
+export interface DisputeRecord {
+  id: number;
+  orderId: number;
+  orderNumber: string;
+  customerId: number;
+  customerName: string;
+  customerPhone: string;
+  reason: string;
+  customerNotes?: string;
+  claimAmount: number;
+  status: 'OPEN' | 'UNDER_REVIEW' | 'APPROVED_REFUNDED' | 'REJECTED';
+  decisionNotes?: string;
+  handledBy?: string;
+  refundTransactionId?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface SurgePricingRuleDto {
+  id?: number;
+  hubId: number;
+  hubName?: string;
+  zoneName?: string;
+  isActive: boolean;
+  multiplier: number;
+  extraFlatFee: number;
+  reason?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
+export interface BulkImportResult {
+  totalRows: number;
+  successCount: number;
+  failureCount: number;
+  duplicateCount: number;
+  importedProductIds: number[];
+  validationErrors: string[];
+}
