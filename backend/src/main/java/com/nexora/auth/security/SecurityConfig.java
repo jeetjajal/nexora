@@ -124,6 +124,10 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                // Public Catalog Browsing (Phase 3 & 4)
+                                "/api/v1/categories/**",
+                                "/api/v1/products/**",
+                                "/api/v1/stores/**",
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 // PHASE 10: Razorpay's servers call this directly and can

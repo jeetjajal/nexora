@@ -1,17 +1,16 @@
 'use client';
 
 import React from 'react';
-import { CATEGORIES } from '@/data/categories';
 import { useApp } from '@/context/AppContext';
 
 export const CategoryBar: React.FC = () => {
-  const { selectedCategory, setSelectedCategory } = useApp();
+  const { categories, selectedCategory, setSelectedCategory } = useApp();
 
   return (
     <div className="py-3 border-b border-brand-border/60">
       <div className="flex items-center justify-between mb-2 px-1">
         <h2 className="text-sm font-black text-brand-text uppercase tracking-wider flex items-center gap-1.5">
-          <span>Explore 31 Fresh Categories</span>
+          <span>Explore {categories.length} Fresh Categories</span>
           <span className="text-[10px] bg-brand-primary/10 text-brand-primary px-2 py-0.5 rounded-full font-bold">
             All 10-Min Delivery
           </span>
@@ -40,7 +39,7 @@ export const CategoryBar: React.FC = () => {
           <span>All Items</span>
         </button>
 
-        {CATEGORIES.map((cat) => {
+        {categories.map((cat) => {
           const isSelected = selectedCategory === cat.id;
           return (
             <button
@@ -64,5 +63,3 @@ export const CategoryBar: React.FC = () => {
     </div>
   );
 };
-
-export default CategoryBar;

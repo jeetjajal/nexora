@@ -1,7 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Product, PRODUCTS } from '@/data/products';
+import { Category, CATEGORIES } from '@/data/categories';
+import { ApiClient, CheckoutPayload } from '@/lib/api-client';
 
 export type AppRole = 'customer' | 'delivery' | 'admin' | 'store';
 
@@ -25,12 +27,18 @@ export interface ActiveOrder {
   riderRating: number;
   etaMinutes: number;
   deliveryOtp: string;
+  darkStore?: string;
+  paymentMethod: string;
   createdAt: string;
 }
 
 interface AppContextType {
   role: AppRole;
   setRole: (role: AppRole) => void;
+  categories: Category[];
+  products: Product[];
+  isLoadingCatalog: boolean;
+  refreshCatalog: () => Promise<void>;
   cart: { [productId: string]: number };
   addToCart: (productId: string) => void;
   removeFromCart: (productId: string) => void;
@@ -52,6 +60,7 @@ interface AppContextType {
   setIsAIOpen: (open: boolean) => void;
   activeOrder: ActiveOrder | null;
   createOrder: (address: string, paymentMethod: string) => ActiveOrder;
+  createOrderWithBackend: (payload: CheckoutPayload) => Promise<ActiveOrder>;
   updateOrderStatus: (status: ActiveOrder['status']) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -63,6 +72,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [role, setRole] = useState<AppRole>('customer');
+  const [categories, setCategories] = useState<Category[]>(CATEGORIES);
+  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+
   const [cart, setCart] = useState<{ [productId: string]: number }>({});
   const [couponCode, setCouponCode] = useState<string>('');
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
@@ -73,10 +86,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Active simulated order
+  // Active simulated or real order
   const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
 
-  // Load / initialize some cart data for instant wow-effect if empty
+  // Fetch catalog from backend via API client
+  const refreshCatalog = useCallback(async () => {
+    setIsLoadingCatalog(true);
+    try {
+      const [fetchedCategories, fetchedProducts] = await Promise.all([
+        ApiClient.getCategories(),
+        ApiClient.getProducts(),
+      ]);
+
+      if (fetchedCategories.length > 0) {
+        setCategories(fetchedCategories);
+      }
+      if (fetchedProducts.length > 0) {
+        setProducts(fetchedProducts);
+      }
+    } catch {
+      // Retain fallback data
+    } finally {
+      setIsLoadingCatalog(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCatalog();
+  }, [refreshCatalog]);
+
+  // Load starter items in cart for smooth first-time demo
   useEffect(() => {
     setCart({
       'p1': 2, // 2x Taaza Milk
@@ -116,7 +155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const getCartItems = (): CartItem[] => {
     return Object.entries(cart)
       .map(([id, quantity]) => {
-        const product = PRODUCTS.find(p => p.id === id);
+        const product = products.find(p => p.id === id) || PRODUCTS.find(p => p.id === id);
         if (!product) return null;
         return { product, quantity };
       })
@@ -143,6 +182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
+  // Synchronous local order creation fallback
   const createOrder = (address: string, paymentMethod: string): ActiveOrder => {
     const items = getCartItems();
     const itemTotal = getCartTotal();
@@ -151,7 +191,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const finalTotal = Math.max(0, itemTotal + deliveryFee + handlingFee - appliedDiscount);
 
     const newOrder: ActiveOrder = {
-      id: `NEX-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: `NX-${Math.floor(100000 + Math.random() * 900000)}`,
       items,
       itemTotal,
       deliveryFee,
@@ -165,7 +205,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       riderRating: 4.9,
       etaMinutes: 9,
       deliveryOtp: String(Math.floor(100000 + Math.random() * 900000)),
+      darkStore: 'Nexora Dark Store SG Highway #04',
+      paymentMethod,
       createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setActiveOrder(newOrder);
+    clearCart();
+    setIsCheckoutOpen(false);
+    setIsCartOpen(false);
+    setIsTrackingOpen(true);
+    return newOrder;
+  };
+
+  // Real backend order creation with Idempotency Key
+  const createOrderWithBackend = async (payload: CheckoutPayload): Promise<ActiveOrder> => {
+    const items = getCartItems();
+    const itemTotal = getCartTotal();
+    const deliveryFee = itemTotal >= 199 ? 0 : 25;
+    const handlingFee = 4;
+    const finalTotal = Math.max(0, itemTotal + deliveryFee + handlingFee - appliedDiscount);
+
+    const idempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    const res = await ApiClient.placeOrder(payload, idempotencyKey);
+
+    const fullAddress = `${payload.address.flat}, ${payload.address.street}, ${payload.address.city} - ${payload.address.pincode}`;
+
+    const newOrder: ActiveOrder = {
+      id: res.orderId,
+      items,
+      itemTotal,
+      deliveryFee,
+      handlingFee,
+      discount: appliedDiscount,
+      finalTotal: res.finalAmount || finalTotal,
+      address: fullAddress,
+      status: 'PLACED',
+      riderName: res.assignedRider?.name || 'Ramesh Patel',
+      riderPhone: res.assignedRider?.phone || '+91 98765 43210',
+      riderRating: res.assignedRider?.rating || 4.92,
+      etaMinutes: res.etaMinutes || 9,
+      deliveryOtp: res.deliveryOtp,
+      darkStore: res.darkStore || 'Nexora Dark Store SG Highway #04',
+      paymentMethod: payload.paymentMethod,
+      createdAt: new Date(res.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setActiveOrder(newOrder);
@@ -190,6 +276,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         role,
         setRole,
+        categories,
+        products,
+        isLoadingCatalog,
+        refreshCatalog,
         cart,
         addToCart,
         removeFromCart,
@@ -211,6 +301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAIOpen,
         activeOrder,
         createOrder,
+        createOrderWithBackend,
         updateOrderStatus,
         searchQuery,
         setSearchQuery,

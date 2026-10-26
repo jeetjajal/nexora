@@ -15,15 +15,17 @@ import { DeliveryApp } from '@/components/delivery/DeliveryApp';
 import { SuperAdminDashboard } from '@/components/admin/SuperAdminDashboard';
 import { StoreOps } from '@/components/store/StoreOps';
 import { WelcomeModal } from '@/components/common/WelcomeModal';
-import { PRODUCTS } from '@/data/products';
-import { CATEGORIES } from '@/data/categories';
-import { Bot, Sparkles, ShieldCheck, Heart, Truck, RefreshCw } from 'lucide-react';
+import { Sparkles, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
 
 export default function HomePage() {
   const {
     role,
     searchQuery,
     selectedCategory,
+    categories,
+    products,
+    isLoadingCatalog,
+    refreshCatalog,
     setIsAIOpen,
     getCartCount,
     getCartTotal,
@@ -33,7 +35,7 @@ export default function HomePage() {
   const [isWelcomeOpen, setIsWelcomeOpen] = React.useState(false);
 
   // Filter products by selectedCategory or searchQuery
-  const filteredProducts = PRODUCTS.filter((p) => {
+  const filteredProducts = products.filter((p) => {
     if (selectedCategory && p.categoryId !== selectedCategory) {
       return false;
     }
@@ -48,7 +50,7 @@ export default function HomePage() {
     return true;
   });
 
-  const activeCategoryObj = CATEGORIES.find(c => c.id === selectedCategory);
+  const activeCategoryObj = categories.find(c => c.id === selectedCategory);
   const cartCount = getCartCount();
   const cartTotal = getCartTotal();
 
@@ -66,7 +68,7 @@ export default function HomePage() {
             {/* Promotional Banners */}
             {!selectedCategory && !searchQuery && <HeroBanner />}
 
-            {/* 31 Blinkit-Style Categories Navigation */}
+            {/* Blinkit-Style Categories Navigation */}
             <CategoryBar />
 
             {/* Product Catalog Grid */}
@@ -89,6 +91,16 @@ export default function HomePage() {
                     {filteredProducts.length} items in stock • Delivered within 10 minutes
                   </p>
                 </div>
+
+                <button
+                  onClick={() => refreshCatalog()}
+                  disabled={isLoadingCatalog}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 rounded-button transition-all"
+                  title="Refresh catalog from backend"
+                >
+                  <RefreshCw size={13} className={isLoadingCatalog ? 'animate-spin' : ''} />
+                  <span className="hidden sm:inline">Sync Live Catalog</span>
+                </button>
               </div>
 
               {filteredProducts.length === 0 ? (
