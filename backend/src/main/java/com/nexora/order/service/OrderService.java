@@ -90,6 +90,9 @@ public class OrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ProductRepository productRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.notification.service.NotificationService notificationService;
+
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
 
@@ -871,6 +874,12 @@ public class OrderService {
             }
         } catch (Exception ex) {}
 
+        try {
+            if (notificationService != null) {
+                notificationService.notifyOrderConfirmed(finalizedOrder);
+            }
+        } catch (Exception ex) {}
+
         return OrderMapper.toResponse(finalizedOrder, orderItems, rawOtp);
     }
 
@@ -914,6 +923,12 @@ public class OrderService {
         try {
             if (orderTrackingWebSocketService != null) {
                 orderTrackingWebSocketService.broadcastOrderStatusUpdate(saved, OrderStatus.OUT_FOR_DELIVERY, "Order successfully delivered! Thank you for choosing Nexora.");
+            }
+        } catch (Exception ex) {}
+
+        try {
+            if (notificationService != null) {
+                notificationService.notifyOrderDelivered(saved);
             }
         } catch (Exception ex) {}
 
@@ -1072,7 +1087,7 @@ public class OrderService {
                 .getRoles()
                 .stream()
                 .anyMatch(role ->
-                        role.getName() == RoleName.ADMIN
+                        role.getName() == RoleName.ADMIN || role.getName() == RoleName.SUPER_ADMIN
                 );
     }
 

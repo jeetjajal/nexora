@@ -722,6 +722,59 @@ export class ApiClient {
     const json = await res.json();
     return json.data;
   }
+  static async getAnalyticsOverview(startDate?: string, endDate?: string, storeId?: number, token?: string): Promise<AnalyticsOverviewResponse> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    if (storeId) params.append('storeId', storeId.toString());
+
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`/api/admin/analytics/overview?${params.toString()}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load analytics overview');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async getAdminNotifications(token?: string): Promise<NotificationLogItem[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/notifications', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load admin notifications');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async getNotificationProviderStatus(token?: string): Promise<Record<string, { channel: string; isConfigured: boolean }>> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch('/api/admin/notifications/providers', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load notification providers');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async getHealthCheck(): Promise<any> {
+    const res = await fetch('/api/health');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Health check failed');
+    }
+    const json = await res.json();
+    return json.data;
+  }
 }
 
 export interface StoreQueueOrder {
@@ -899,4 +952,67 @@ export interface BulkImportResult {
   duplicateCount: number;
   importedProductIds: number[];
   validationErrors: string[];
+}
+
+export interface AnalyticsOverviewResponse {
+  startDate: string;
+  endDate: string;
+  storeId?: number;
+  totalOrders: number;
+  grossMerchandiseValue: number;
+  netPlatformRevenue: number;
+  totalDeliveryFees: number;
+  totalDiscounts: number;
+  averageOrderValue: number;
+  slaComplianceRatePercent: number;
+  averageDeliveryTimeSeconds: number;
+  averageFulfillmentTimeSeconds: number;
+  totalCancellations: number;
+  totalDisputes: number;
+  totalRefundsAmount: number;
+  paymentReconciliation: {
+    gatewayCollected: number;
+    refundsDisbursed: number;
+    netSettled: number;
+  };
+  topSellingProducts: {
+    productId: number;
+    productName: string;
+    categoryName: string;
+    unitsSold: number;
+    revenueGenerated: number;
+  }[];
+  categoryPerformance: {
+    categoryId: number;
+    categoryName: string;
+    unitsSold: number;
+    grossRevenue: number;
+  }[];
+  storeFulfillmentMetrics: {
+    storeId: number;
+    storeName: string;
+    city: string;
+    orderCount: number;
+    gmv: number;
+    slaCompliancePercent: number;
+    avgDeliveryTimeSeconds: number;
+    avgFulfillmentTimeSeconds: number;
+    outOfStockCount: number;
+  }[];
+}
+
+export interface NotificationLogItem {
+  id: number;
+  orderId?: number;
+  recipient: string;
+  channel: 'EMAIL' | 'SMS' | 'PUSH';
+  eventType: string;
+  title: string;
+  sanitizedBody: string;
+  deliveryStatus: 'DELIVERED' | 'FAILED' | 'QUEUED_UNCONFIGURED' | 'SIMULATED_LOCAL';
+  providerResponse?: string;
+  deduplicationKey?: string;
+  retryCount: number;
+  createdAt: string;
+  deliveredAt?: string;
 }

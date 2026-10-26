@@ -174,6 +174,7 @@ public class SecurityConfig {
                                 // PHASE 26: Observability, Prometheus Actuator & Grafana Dashboard
                                 "/actuator/**",
                                 "/api/v1/monitoring/**",
+                                "/api/v1/health",
                                 "/monitoring.html",
                                 // PHASE 27: Performance Benchmarking & Load Testing Dashboard
                                 "/api/v1/loadtest/**",
@@ -203,7 +204,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of("https://*.vercel.app"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "Accept", "X-Requested-With"));
-        configuration.setExposedHeaders(List.of("Authorization", "Idempotency-Key"));
+        configuration.setExposedHeaders(List.of("Authorization", "Idempotency-Key", "X-Correlation-Id"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

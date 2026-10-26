@@ -36,6 +36,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     /**
      * Triggered when @Valid validation fails.
      *
@@ -369,10 +371,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleGenericException(
             Exception ex) {
 
+        log.error("Unhandled exception intercepted by GlobalExceptionHandler", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(
-                        "Something went wrong: " + ex.getMessage()
+                        "An unexpected internal error occurred. Please try again or contact support."
                 ));
     }
 }

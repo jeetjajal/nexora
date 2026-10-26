@@ -63,6 +63,9 @@ public class AdminControlTowerService {
     private final InventoryRepository inventoryRepository;
     private final SurgePricingRepository surgePricingRepository;
     private final UserRepository userRepository;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.notification.service.NotificationService notificationService;
     private final PaymentRepository paymentRepository;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -233,6 +236,13 @@ public class AdminControlTowerService {
         Order order = orderRepository.findById(req.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + req.getOrderId()));
 
+        // Object-level authorization: ensure customer owns the order unless admin/super_admin
+        boolean isAdmin = caller.getUser().getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ADMIN || r.getName() == RoleName.SUPER_ADMIN);
+        if (!isAdmin && (order.getUser() == null || !order.getUser().getId().equals(caller.getId()))) {
+            throw new com.nexora.exception.ForbiddenOperationException("You are not authorized to file a dispute for this order.");
+        }
+
         // Prevent duplicate open/under review disputes for same order
         boolean existingActive = disputeRepository.existsByOrderIdAndStatusIn(order.getId(), 
                 List.of(DisputeStatus.OPEN, DisputeStatus.UNDER_REVIEW, DisputeStatus.APPROVED_REFUNDED));
@@ -298,6 +308,11 @@ public class AdminControlTowerService {
             dispute.setRefundTransactionId(refundId);
             log.info("REFUND AUDIT: Admin {} APPROVED refund for dispute #{} (Order #{}) with transaction {}",
                     caller.getUser().getName(), disputeId, order.getId(), refundId);
+            try {
+                if (notificationService != null) {
+                    notificationService.notifyRefundProcessed(order, dispute.getClaimAmount(), req.getDecisionNotes());
+                }
+            } catch (Exception ex) {}
         } else {
             log.info("DISPUTE AUDIT: Admin {} marked dispute #{} as {}",
                     caller.getUser().getName(), disputeId, req.getDecision());
