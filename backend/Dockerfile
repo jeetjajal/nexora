@@ -1,11 +1,12 @@
 # ==============================================================================
-# NEXORA MULTI-STAGE DOCKERFILE
+# NEXORA MULTI-STAGE DOCKERFILE (Repository Root Context)
 # ==============================================================================
 # Security & Best Practice Rules:
 # 1. Multi-Stage Build: Compiles source in build container; keeps final runtime image small (<250MB).
 # 2. Non-Root Execution: Runs under dedicated 'nexora' user (UID 10001) to prevent container breakouts.
 # 3. Layer Caching: Dependencies (pom.xml) are resolved before copying source code.
 # 4. Zero Secrets In Image: All database, payment & AI credentials are provided via runtime environment variables.
+# 5. Root Context Compatible: Expects repository root as Docker build context for Render, Railway & CI.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -16,11 +17,11 @@ FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
 WORKDIR /workspace
 
 # Cache maven dependencies layer
-COPY pom.xml .
+COPY backend/pom.xml ./pom.xml
 RUN mvn dependency:go-offline -B
 
 # Copy source code and build executable jar
-COPY src ./src
+COPY backend/src ./src
 RUN mvn clean package -DskipTests -B
 
 # ------------------------------------------------------------------------------

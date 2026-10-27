@@ -117,8 +117,8 @@ services:
   # ----------------------------------------------------------------------------
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: nexora-backend
     restart: on-failure
     depends_on:

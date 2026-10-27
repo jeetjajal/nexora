@@ -3,7 +3,6 @@ services:
     name: nexora-backend
     runtime: docker
     dockerfilePath: backend/Dockerfile
-    dockerContext: backend
     plan: starter
     region: singapore
     healthCheckPath: /api/v1/health
