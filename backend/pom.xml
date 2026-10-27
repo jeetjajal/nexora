@@ -47,6 +47,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Flyway Database Migration Support (Phase 10 & 11) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- Full Spring Security starter (Phase 3).
              This supersedes the standalone spring-security-crypto
              dependency from Phase 1 — spring-boot-starter-security
