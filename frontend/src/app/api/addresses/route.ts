@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+import { getBackendUrl } from '@/lib/server-config';
+const BACKEND_URL = getBackendUrl();
 
 // Serviceable Dark Stores in Ahmedabad with their delivery zones & PIN codes
 const SERVICEABLE_PINCODES: Record<string, { darkStore: string; storeCode: string; eta: number }> = {

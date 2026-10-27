@@ -14,6 +14,14 @@ export async function POST(request: NextRequest) {
     // Convert to paise (e.g. ₹100 = 10000 paise)
     const amountInPaise = Math.round(Number(amount) * 100);
 
+    // Production check
+    if (process.env.NODE_ENV === 'production' && (!keySecret || keyId === 'rzp_test_nexora_sandbox')) {
+      return NextResponse.json({
+        status: 'ERROR',
+        message: 'Payment gateway credentials are not configured in production environment',
+      }, { status: 500 });
+    }
+
     // If real Razorpay credentials provided, invoke Razorpay API
     if (keySecret && keyId !== 'rzp_test_nexora_sandbox') {
       const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
@@ -44,14 +52,20 @@ export async function POST(request: NextRequest) {
             keyId,
           },
         });
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        return NextResponse.json({
+          status: 'ERROR',
+          message: errJson.error?.description || 'Failed to create payment order with gateway',
+        }, { status: response.status });
       }
     }
 
-    // Default Sandbox / Test Mode mock order
+    // Local Sandbox / Test Simulation Mode only (when non-production)
     const mockOrderId = `order_${Math.random().toString(36).substring(2, 12)}`;
     return NextResponse.json({
       status: 'SUCCESS',
-      mode: 'SANDBOX',
+      mode: 'SANDBOX_SIMULATION',
       data: {
         id: mockOrderId,
         amount: amountInPaise,

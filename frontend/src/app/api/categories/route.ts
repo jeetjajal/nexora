@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { CATEGORIES } from '@/data/categories';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+import { getBackendUrl } from '@/lib/server-config';
+const BACKEND_URL = getBackendUrl();
 
 export async function GET() {
   try {

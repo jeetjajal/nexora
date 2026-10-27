@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+import { getBackendUrl } from '@/lib/server-config';
 
 // Serviceable Dark Stores in Ahmedabad
 const DARK_STORES = [
@@ -11,6 +10,8 @@ const DARK_STORES = [
 ];
 
 export async function POST(request: NextRequest) {
+  const BACKEND_URL = getBackendUrl();
+
   try {
     const authHeader = request.headers.get('Authorization');
     const idempotencyKey = request.headers.get('Idempotency-Key');
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ERROR', message: 'Complete delivery address is required' }, { status: 400 });
     }
 
-    // Server-side authoritative calculation
+    // Authoritative calculations
     const subtotal = items.reduce((acc: number, item: any) => acc + (Number(item.price) * Number(item.quantity)), 0);
     const handlingFee = 4;
     const deliveryFee = subtotal >= 199 ? 0 : 25;
@@ -38,16 +39,14 @@ export async function POST(request: NextRequest) {
     }
 
     const finalAmount = Math.max(0, subtotal + handlingFee + deliveryFee - discount);
-
-    // Dark store routing
     const darkStore = DARK_STORES[Math.floor(Math.random() * DARK_STORES.length)];
     const orderId = `NX-${Math.floor(100000 + Math.random() * 900000)}`;
-    const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000)); // 4-digit unpredictable OTP
+    const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
 
-    // Forward to Spring Boot Direct Checkout if available
+    // Forward to Spring Boot Direct Checkout
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -105,15 +104,31 @@ export async function POST(request: NextRequest) {
             createdAt: bOrder?.createdAt || new Date().toISOString(),
           },
         });
+      } else {
+        // Backend actively returned an error (e.g. 401 Unauthorized, 409 Out of Stock)
+        // Must NOT masquerade as success!
+        const errJson = await backendRes.json().catch(() => ({}));
+        return NextResponse.json({
+          status: 'ERROR',
+          message: errJson.message || 'Order creation rejected by commerce engine',
+          errors: errJson.data || null,
+        }, { status: backendRes.status });
       }
-    } catch {
-      // Backend offline -> proceed with robust local engine
+    } catch (fetchErr) {
+      // Backend is unreachable / timed out
+      if (process.env.NODE_ENV === 'production' || process.env.ENFORCE_BACKEND === 'true') {
+        return NextResponse.json({
+          status: 'ERROR',
+          message: 'Backend commerce engine is currently unreachable. Order was not placed to ensure data integrity.',
+        }, { status: 503 });
+      }
     }
 
+    // Non-production sandbox simulation mode
     return NextResponse.json({
       status: 'SUCCESS',
-      source: 'SERVER_ENGINE',
-      message: 'Order placed successfully and routed to nearest dark store',
+      source: 'LOCAL_DEV_SIMULATION',
+      message: 'Order placed in local simulation mode (development sandbox)',
       data: {
         orderId,
         items,
@@ -138,6 +153,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ status: 'ERROR', message: err.message }, { status: 400 });
+    return NextResponse.json({ status: 'ERROR', message: err.message }, { status: 500 });
   }
 }

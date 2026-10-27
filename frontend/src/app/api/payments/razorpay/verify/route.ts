@@ -10,27 +10,45 @@ export async function POST(request: NextRequest) {
 
     if (!razorpay_order_id || !razorpay_payment_id) {
       return NextResponse.json(
-        { verified: false, message: 'Missing order_id or payment_id' },
+        { verified: false, message: 'Missing razorpay_order_id or razorpay_payment_id' },
         { status: 400 }
       );
     }
 
-    // In sandbox or when no real secret is set, auto-validate
-    if (!keySecret || razorpay_order_id.startsWith('order_')) {
+    // In production, keySecret is mandatory
+    if (!keySecret) {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json(
+          { verified: false, message: 'Payment gateway secret not configured on server' },
+          { status: 500 }
+        );
+      }
+
+      // Safe local sandbox / test simulation only when running non-production
       return NextResponse.json({
         verified: true,
-        mode: 'SANDBOX',
-        message: 'Sandbox payment verified successfully',
+        mode: 'SANDBOX_SIMULATION',
+        message: 'Sandbox payment verified (Simulation mode - test only)',
       });
     }
 
-    // Production HMAC-SHA256 signature verification
+    // Cryptographic HMAC-SHA256 signature verification (Mandatory when keySecret exists)
+    if (!razorpay_signature) {
+      return NextResponse.json(
+        { verified: false, message: 'Payment signature missing from request' },
+        { status: 400 }
+      );
+    }
+
     const generatedSignature = crypto
       .createHmac('sha256', keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    const isValid = generatedSignature === razorpay_signature;
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(generatedSignature, 'utf-8'),
+      Buffer.from(razorpay_signature, 'utf-8')
+    );
 
     if (isValid) {
       return NextResponse.json({

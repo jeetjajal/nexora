@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PRODUCTS } from '@/data/products';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
+import { getBackendUrl } from '@/lib/server-config';
+const BACKEND_URL = getBackendUrl();
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
