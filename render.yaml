@@ -14,10 +14,18 @@ services:
         value: "true"
       - key: SPRING_DATASOURCE_URL
         sync: false
-      - key: SPRING_DATASOURCE_USERNAME
+      - key: DB_HOST
         sync: false
-      - key: SPRING_DATASOURCE_PASSWORD
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        value: "nexora_db"
+      - key: DB_USERNAME
         sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL
+        value: "true"
       - key: NEXORA_JWT_SECRET
         generateValue: true
       - key: RAZORPAY_KEY_ID
