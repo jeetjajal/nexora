@@ -45,7 +45,7 @@ RUN addgroup -g 10001 -S nexoragroup && \
 WORKDIR /app
 
 # Copy artifact from builder stage
-COPY --from=builder --chown=nexorauser:nexoragroup /workspace/target/*.jar app.jar
+COPY --from=builder --chown=nexorauser:nexoragroup /workspace/target/nexora-*.jar app.jar
 
 # Switch to non-privileged user
 USER nexorauser:nexoragroup
@@ -58,6 +58,6 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOut
 
 # Container healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/actuator/health || exit 1
+  CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1
 
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
