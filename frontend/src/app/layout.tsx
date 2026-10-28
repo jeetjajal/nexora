@@ -6,10 +6,11 @@ export const metadata: Metadata = {
   title: 'NEXORA — 10-Minute Quick Commerce | Fresh Groceries & Essentials',
   description: 'Experience lightning fast 10-minute grocery delivery from your neighborhood dark store. 100% farm fresh produce, daily essentials, snacks, and milk.',
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/assets/brand/app-icon.svg',
+    icon: '/assets/brand/app-icon.png',
+    shortcut: '/assets/brand/app-icon.png',
+    apple: '/assets/brand/app-icon.png',
   },
+  manifest: '/manifest.json',
   openGraph: {
     title: 'NEXORA — 10-Minute Quick Commerce',
     description: 'Groceries and daily essentials delivered in 10 minutes flat.',

@@ -10,45 +10,20 @@ interface LogoProps {
 export const NexoraIcon: React.FC<{ size?: number; className?: string; inverted?: boolean }> = ({
   size = 40,
   className = '',
-  inverted = false,
 }) => {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 100 100"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`shrink-0 ${className}`}
+    <div
+      className={`shrink-0 relative overflow-hidden rounded-xl shadow-xs inline-flex items-center justify-center ${className}`}
+      style={{ width: size, height: size }}
     >
-      <defs>
-        <linearGradient id={`gradLeaf-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#D8F36A" />
-          <stop offset="100%" stopColor="#A8E832" />
-        </linearGradient>
-      </defs>
-
-      {/* Left Pillar */}
-      <path
-        d="M18 82V28C18 22.477 22.477 18 28 18H32C35.314 18 38 20.686 38 24V82H18Z"
-        fill={inverted ? '#FFFFFF' : '#176B45'}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/assets/brand/app-icon.png"
+        alt="Nexora"
+        className="w-full h-full object-cover rounded-xl"
+        style={{ width: `${size}px`, height: `${size}px` }}
       />
-
-      {/* Dynamic Forward Arrow / Fresh Leaf Diagonal */}
-      <path
-        d="M30 20L72 68C76 72.5 82 69 82 63V22C82 19.791 80.209 18 78 18H74C71.791 18 70 19.791 70 22V52L36 18C34 16 30 17 30 20Z"
-        fill={`url(#gradLeaf-${size})`}
-      />
-
-      {/* Right Pillar */}
-      <path
-        d="M62 82V38C62 34.686 64.686 32 68 32H72C77.523 32 82 36.477 82 42V82H62Z"
-        fill={inverted ? '#FFFFFF' : '#176B45'}
-      />
-
-      {/* Motion Spark Accent */}
-      <circle cx="82" cy="18" r="6" fill="#D8F36A" />
-    </svg>
+    </div>
   );
 };
 

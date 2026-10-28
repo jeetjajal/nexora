@@ -17,6 +17,7 @@ import { DeliveryApp } from '@/components/delivery/DeliveryApp';
 import { SuperAdminDashboard } from '@/components/admin/SuperAdminDashboard';
 import { StoreOps } from '@/components/store/StoreOps';
 import { WelcomeModal } from '@/components/common/WelcomeModal';
+import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { Sparkles, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
 
 export default function HomePage() {
@@ -66,7 +67,7 @@ export default function HomePage() {
         <>
           <Header />
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-3 space-y-4">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-3 space-y-4 pb-28 md:pb-8">
             {/* Promotional Banners */}
             {!selectedCategory && !searchQuery && <HeroBanner />}
 
@@ -179,38 +180,34 @@ export default function HomePage() {
         </>
       )}
 
-      {role === 'delivery' && <DeliveryApp />}
-      {role === 'admin' && <SuperAdminDashboard />}
-      {role === 'store' && <StoreOps />}
+      {role === 'delivery' && (
+        <div className="pb-28 md:pb-8">
+          <DeliveryApp />
+        </div>
+      )}
+      {role === 'admin' && (
+        <div className="pb-28 md:pb-8">
+          <SuperAdminDashboard />
+        </div>
+      )}
+      {role === 'store' && (
+        <div className="pb-28 md:pb-8">
+          <StoreOps />
+        </div>
+      )}
 
       {/* 3. Global Floating AI Assistant Button */}
       <button
         onClick={() => setIsAIOpen(true)}
-        className="fixed bottom-6 right-6 z-40 p-3.5 bg-brand-primary hover:bg-brand-primaryHover text-white rounded-full shadow-modal hover:scale-105 transition-all flex items-center gap-2 group border-2 border-brand-accent"
+        className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 p-3 sm:p-3.5 bg-brand-primary hover:bg-brand-primaryHover text-white rounded-full shadow-modal hover:scale-105 transition-all flex items-center gap-2 group border-2 border-brand-accent"
         aria-label="Open Nexora AI Shopping Assistant"
       >
         <Sparkles size={18} className="text-brand-accent animate-spin" style={{ animationDuration: '4s' }} />
         <span className="text-xs font-black hidden sm:inline pr-1">Nexora AI</span>
       </button>
 
-      {/* 4. Mobile Sticky Bottom Cart Bar */}
-      {cartCount > 0 && role === 'customer' && (
-        <div className="sm:hidden fixed bottom-3 left-3 right-3 z-40">
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="w-full py-3 px-4 bg-brand-primary text-white rounded-button font-black text-xs flex items-center justify-between shadow-modal border border-brand-accent/30 active:scale-98"
-          >
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-[10px] text-white/80 font-normal">{cartCount} items in cart</span>
-              <span className="text-sm font-black text-brand-accent">₹{cartTotal} TOTAL</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-brand-accent text-brand-text px-3 py-1.5 rounded-full font-bold">
-              <span>View Cart</span>
-              <span>&rarr;</span>
-            </div>
-          </button>
-        </div>
-      )}
+      {/* 4. Unified Mobile Bottom Navigation & Floating Cart Bar */}
+      <MobileBottomNav />
 
       {/* 5. Drawers and Modals */}
       <CartDrawer />
