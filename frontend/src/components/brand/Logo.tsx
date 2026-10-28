@@ -13,14 +13,14 @@ export const NexoraIcon: React.FC<{ size?: number; className?: string; inverted?
 }) => {
   return (
     <div
-      className={`shrink-0 relative overflow-hidden rounded-xl shadow-xs inline-flex items-center justify-center ${className}`}
+      className={`shrink-0 relative inline-flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/assets/brand/app-icon.png"
         alt="Nexora"
-        className="w-full h-full object-cover rounded-xl"
+        className="w-full h-full object-contain drop-shadow-xs"
         style={{ width: `${size}px`, height: `${size}px` }}
       />
     </div>
