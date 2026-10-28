@@ -36,11 +36,11 @@ public class FlywayMigrationValidationTest {
 
         // 3. Execute migrations
         int appliedCount = flyway.migrate().migrationsExecuted;
-        assertEquals(2, appliedCount, "Should execute exactly 2 migration scripts (V1 and V2)");
+        assertEquals(3, appliedCount, "Should execute exactly 3 migration scripts (V1, V2 and V3)");
 
         // 4. Verify Migration Info & History
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertEquals(2, appliedMigrations.length);
+        assertEquals(3, appliedMigrations.length);
 
         assertEquals("1", appliedMigrations[0].getVersion().getVersion());
         assertEquals("init schema", appliedMigrations[0].getDescription());
@@ -49,6 +49,10 @@ public class FlywayMigrationValidationTest {
         assertEquals("2", appliedMigrations[1].getVersion().getVersion());
         assertEquals("delivery payments disputes analytics", appliedMigrations[1].getDescription());
         assertEquals(MigrationState.SUCCESS, appliedMigrations[1].getState());
+
+        assertEquals("3", appliedMigrations[2].getVersion().getVersion());
+        assertEquals("seed catalogue categories", appliedMigrations[2].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[2].getState());
 
         // 5. Verify physical schema tables generated in the database
         try (Connection conn = dataSource.getConnection()) {

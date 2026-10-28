@@ -348,7 +348,7 @@ export const SuperAdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-black text-brand-text">Catalog & SKU Management</h3>
-                <p className="text-[11px] text-brand-muted">Manage items across all 31 categories with real-time price updates.</p>
+                <p className="text-[11px] text-brand-muted">Manage items across all {CATEGORIES.length} categories with real-time price updates.</p>
               </div>
               <button className="px-3.5 py-1.5 bg-brand-primary text-white rounded-button text-xs font-bold flex items-center gap-1.5 shadow-sm">
                 <Plus size={14} />
