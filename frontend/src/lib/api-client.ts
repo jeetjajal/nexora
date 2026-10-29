@@ -404,6 +404,7 @@ export class ApiClient {
     amount: number;
     currency: string;
     keyId: string;
+    mode?: 'LIVE_GATEWAY' | 'SANDBOX_SIMULATION';
   }> {
     const res = await fetch('/api/payments/razorpay/create-order', {
       method: 'POST',
@@ -416,7 +417,10 @@ export class ApiClient {
     }
 
     const json = await res.json();
-    return json.data;
+    return {
+      ...json.data,
+      mode: json.mode,
+    };
   }
 
   // Razorpay: Verify Payment Signature

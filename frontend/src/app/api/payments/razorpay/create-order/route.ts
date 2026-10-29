@@ -8,14 +8,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'ERROR', message: 'Valid amount is required' }, { status: 400 });
     }
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_nexora_sandbox';
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || 'rzp_test_nexora_sandbox';
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     // Convert to paise (e.g. ₹100 = 10000 paise)
     const amountInPaise = Math.round(Number(amount) * 100);
 
     // If real Razorpay credentials provided and valid, invoke Razorpay API
-    if (keySecret && keyId && keyId !== 'rzp_test_nexora_sandbox') {
+    const isPotentiallyRealKey = keyId &&
+      (keyId.startsWith('rzp_test_') || keyId.startsWith('rzp_live_')) &&
+      keyId !== 'rzp_test_nexora_sandbox' &&
+      keyId !== 'rzp_test_mock_id' &&
+      keyId.length >= 18;
+
+    if (keySecret && isPotentiallyRealKey) {
       try {
         const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
         const response = await fetch('https://api.razorpay.com/v1/orders', {
@@ -38,6 +44,7 @@ export async function POST(request: NextRequest) {
           const orderData = await response.json();
           return NextResponse.json({
             status: 'SUCCESS',
+            mode: 'LIVE_GATEWAY',
             data: {
               id: orderData.id,
               amount: orderData.amount,
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
           });
         }
       } catch (err: any) {
-        console.warn('Razorpay live gateway call failed, falling back to sandbox order:', err.message);
+        console.warn('Razorpay live gateway call failed, falling back to sandbox order:', err?.message);
       }
     }
 
@@ -60,7 +67,7 @@ export async function POST(request: NextRequest) {
         id: mockOrderId,
         amount: amountInPaise,
         currency: 'INR',
-        keyId: keyId || 'rzp_test_nexora_sandbox',
+        keyId: isPotentiallyRealKey ? keyId : 'rzp_test_nexora_sandbox',
       },
     });
   } catch (err: any) {
