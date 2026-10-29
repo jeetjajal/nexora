@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Local / Standalone fallback registration
+    const mockToken = `nexora_jwt_${Buffer.from(email + Date.now()).toString("base64").substring(0, 32)}`;
     return NextResponse.json({
       status: 'SUCCESS',
       source: 'LOCAL_AUTH_ENGINE',
@@ -72,6 +73,8 @@ export async function POST(request: NextRequest) {
         phone: cleanPhone,
         status: 'ACTIVE',
         roles: ['ROLE_CUSTOMER'],
+        accessToken: mockToken,
+        tokenType: 'Bearer',
         createdAt: new Date().toISOString(),
       },
     }, { status: 201 });

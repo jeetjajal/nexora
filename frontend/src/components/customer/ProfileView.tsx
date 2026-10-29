@@ -12,6 +12,7 @@ import {
   Headphones,
   ShieldCheck,
   LogOut,
+  LayoutGrid,
   ChevronRight,
   Plus,
   CheckCircle2,
@@ -36,6 +37,7 @@ export const ProfileView: React.FC = () => {
     setIsCartOpen,
     addToCart,
     products,
+    setIsRolePortalOpen,
   } = useApp();
 
   const [activeSection, setActiveSection] = useState<'OVERVIEW' | 'ADDRESSES' | 'ORDERS' | 'WALLET'>('OVERVIEW');
@@ -255,6 +257,28 @@ export const ProfileView: React.FC = () => {
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
                 Active
               </span>
+            </div>
+
+            {/* Staff & Partner Portal Entry */}
+            <div
+              onClick={() => setIsRolePortalOpen(true)}
+              className="bg-gradient-to-r from-emerald-50 to-green-50 p-4 rounded-card border border-brand-primary/30 shadow-xs hover:border-brand-primary cursor-pointer transition-all flex items-center justify-between sm:col-span-2"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-brand-primary text-white flex items-center justify-center font-bold shadow-xs">
+                  <LayoutGrid size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-black text-brand-text">Staff &amp; Partner Portal (પોર્ટલ પસંદ કરો)</h4>
+                    <span className="text-[10px] bg-brand-accent text-brand-text font-black px-1.5 py-0.2 rounded">
+                      Rider / Store / Admin
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-brand-muted">Switch to Delivery Partner, Dark Store Operations, or Super Admin Tower</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-brand-primary" />
             </div>
           </div>
         </div>

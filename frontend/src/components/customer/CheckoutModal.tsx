@@ -3,7 +3,34 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ApiClient } from '@/lib/api-client';
-import { X, MapPin, CreditCard, Banknote, ShieldCheck, Clock, Check, Plus, AlertCircle } from 'lucide-react';
+import {
+  X,
+  MapPin,
+  CreditCard,
+  Banknote,
+  ShieldCheck,
+  Clock,
+  Check,
+  Plus,
+  AlertCircle,
+  Lock,
+  UserCheck,
+} from 'lucide-react';
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -14,6 +41,8 @@ export const CheckoutModal: React.FC = () => {
     appliedDiscount,
     couponCode,
     createOrderWithBackend,
+    currentUser,
+    setIsAuthOpen,
   } = useApp();
 
   const [selectedAddress, setSelectedAddress] = useState('home');
@@ -42,8 +71,8 @@ export const CheckoutModal: React.FC = () => {
     {
       id: 'home',
       label: 'Home',
-      name: 'Jeet Jajal',
-      phone: '+91 98765 43210',
+      name: currentUser?.name || 'Customer',
+      phone: currentUser?.phone || '+91 98765 43210',
       flat: 'B-402, Shivalik Residency',
       street: 'Near SG Highway, Bodakdev',
       city: 'Ahmedabad',
@@ -53,8 +82,8 @@ export const CheckoutModal: React.FC = () => {
     {
       id: 'office',
       label: 'Office',
-      name: 'Jeet Jajal',
-      phone: '+91 98765 43210',
+      name: currentUser?.name || 'Customer',
+      phone: currentUser?.phone || '+91 98765 43210',
       flat: '504, Westgate Business Bay',
       street: 'Corporate Road, Makarba',
       city: 'Ahmedabad',
@@ -64,14 +93,21 @@ export const CheckoutModal: React.FC = () => {
   ];
 
   const handlePlaceOrder = async () => {
+    // 1. Compulsory Login Enforcement
+    if (!currentUser) {
+      setErrorMsg('Please log in or create an account to place your order.');
+      setIsAuthOpen(true);
+      return;
+    }
+
     setIsProcessing(true);
     setErrorMsg(null);
 
     try {
       const chosenAddr = isAddingAddress
         ? {
-            name: customAddress.name || 'Customer',
-            phone: customAddress.phone || '+91 98765 43210',
+            name: customAddress.name || currentUser.name || 'Customer',
+            phone: customAddress.phone || currentUser.phone || '+91 98765 43210',
             flat: customAddress.flat || 'Flat 101',
             street: customAddress.street || 'SG Highway',
             city: customAddress.city || 'Ahmedabad',
@@ -79,8 +115,8 @@ export const CheckoutModal: React.FC = () => {
             tag: 'OTHER' as const,
           }
         : {
-            name: defaultAddresses.find(a => a.id === selectedAddress)?.name || 'Jeet Jajal',
-            phone: defaultAddresses.find(a => a.id === selectedAddress)?.phone || '+91 98765 43210',
+            name: defaultAddresses.find(a => a.id === selectedAddress)?.name || currentUser.name || 'Customer',
+            phone: defaultAddresses.find(a => a.id === selectedAddress)?.phone || currentUser.phone || '+91 98765 43210',
             flat: defaultAddresses.find(a => a.id === selectedAddress)?.flat || 'B-402',
             street: defaultAddresses.find(a => a.id === selectedAddress)?.street || 'SG Highway',
             city: defaultAddresses.find(a => a.id === selectedAddress)?.city || 'Ahmedabad',
@@ -95,24 +131,93 @@ export const CheckoutModal: React.FC = () => {
         quantity: item.quantity,
       }));
 
-      // Razorpay Flow
+      // 2. Online Razorpay Checkout Flow
       if (paymentMethod === 'RAZORPAY') {
-        // Step 1: Create Razorpay Order on server
         const rzpOrder = await ApiClient.createRazorpayOrder(finalTotal, `rcpt_${Date.now()}`);
 
-        // Step 2: Verify Razorpay Signature (Sandbox simulation or Web SDK)
+        const isScriptLoaded = await loadRazorpayScript();
+
+        if (isScriptLoaded && typeof window !== 'undefined' && (window as any).Razorpay) {
+          // Open Standard Razorpay Checkout Modal
+          const options = {
+            key: rzpOrder.keyId || 'rzp_test_nexora_sandbox',
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency || 'INR',
+            name: 'NEXORA Quick Commerce',
+            description: '10-Minute Rapid Grocery Delivery',
+            image: '/assets/brand/app-icon.png',
+            order_id: rzpOrder.id && rzpOrder.id.startsWith('order_') ? rzpOrder.id : undefined,
+            prefill: {
+              name: chosenAddr.name || currentUser.name || 'Customer',
+              email: currentUser.email || 'customer@nexora.in',
+              contact: chosenAddr.phone || currentUser.phone || '9876543210',
+            },
+            theme: {
+              color: '#0c831f',
+            },
+            handler: async function (response: any) {
+              try {
+                await ApiClient.verifyRazorpayPayment({
+                  razorpay_order_id: response.razorpay_order_id || rzpOrder.id,
+                  razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
+                  razorpay_signature: response.razorpay_signature || 'verified_sig',
+                });
+
+                await createOrderWithBackend({
+                  items: cartItems,
+                  address: chosenAddr,
+                  paymentMethod: 'RAZORPAY',
+                  couponCode: couponCode || undefined,
+                });
+                setIsProcessing(false);
+              } catch (err: any) {
+                setErrorMsg(err.message || 'Payment verification failed');
+                setIsProcessing(false);
+              }
+            },
+            modal: {
+              ondismiss: function () {
+                setIsProcessing(false);
+              },
+            },
+          };
+
+          try {
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (resp: any) {
+              setErrorMsg(resp?.error?.description || 'Razorpay payment was not completed.');
+              setIsProcessing(false);
+            });
+            rzp.open();
+            return;
+          } catch {
+            // Fallback for sandboxed webviews
+          }
+        }
+
+        // Direct sandbox verification fallback if popup is blocked
         await ApiClient.verifyRazorpayPayment({
           razorpay_order_id: rzpOrder.id,
-          razorpay_payment_id: `pay_${Math.random().toString(36).substring(2, 10)}`,
+          razorpay_payment_id: `pay_sandbox_${Date.now()}`,
           razorpay_signature: 'verified_signature',
         });
+
+        await createOrderWithBackend({
+          items: cartItems,
+          address: chosenAddr,
+          paymentMethod: 'RAZORPAY',
+          couponCode: couponCode || undefined,
+        });
+
+        setIsProcessing(false);
+        return;
       }
 
-      // Step 3: Place authoritative order
+      // 3. Cash On Delivery Flow
       await createOrderWithBackend({
         items: cartItems,
         address: chosenAddr,
-        paymentMethod,
+        paymentMethod: 'COD',
         couponCode: couponCode || undefined,
       });
 
@@ -153,6 +258,31 @@ export const CheckoutModal: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* Compulsory Login Notice if Guest */}
+        {!currentUser && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 text-xs flex items-center justify-between text-amber-900">
+            <div className="flex items-center gap-2">
+              <Lock size={15} className="text-amber-700 shrink-0" />
+              <span>Login is compulsory before placing an order.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAuthOpen(true)}
+              className="px-2.5 py-1 bg-brand-primary text-white text-[11px] font-bold rounded-full hover:bg-brand-primaryHover transition-all shrink-0 ml-2"
+            >
+              Login / Register
+            </button>
+          </div>
+        )}
+
+        {/* Logged in User Badge */}
+        {currentUser && (
+          <div className="bg-green-50 border-b border-green-200 px-4 py-2 text-xs flex items-center gap-2 text-emerald-900 font-semibold">
+            <UserCheck size={14} className="text-emerald-700 shrink-0" />
+            <span>Delivering for: <strong className="font-black text-emerald-800">{currentUser.name}</strong> ({currentUser.phone || currentUser.email})</span>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMsg && (
@@ -345,23 +475,37 @@ export const CheckoutModal: React.FC = () => {
 
         {/* Action Button */}
         <div className="p-4 bg-white border-t border-brand-border">
-          <button
-            disabled={isProcessing}
-            onClick={handlePlaceOrder}
-            className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-70 text-white rounded-button font-black text-sm flex items-center justify-center gap-2 shadow-card transition-all active:scale-98"
-          >
-            {isProcessing ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Processing with Dark Store & Dispatch...</span>
-              </>
-            ) : (
-              <>
-                <span>Place Order • ₹{finalTotal}</span>
-                <Clock size={16} />
-              </>
-            )}
-          </button>
+          {!currentUser ? (
+            <button
+              type="button"
+              onClick={() => {
+                setErrorMsg('Please login or register to complete your order.');
+                setIsAuthOpen(true);
+              }}
+              className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover text-white rounded-button font-black text-sm flex items-center justify-center gap-2 shadow-card transition-all active:scale-98"
+            >
+              <Lock size={15} />
+              <span>Login to Place Order · ₹{finalTotal}</span>
+            </button>
+          ) : (
+            <button
+              disabled={isProcessing}
+              onClick={handlePlaceOrder}
+              className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-70 text-white rounded-button font-black text-sm flex items-center justify-center gap-2 shadow-card transition-all active:scale-98"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Processing with Dark Store & Dispatch...</span>
+                </>
+              ) : (
+                <>
+                  <span>Place Order · ₹{finalTotal}</span>
+                  <Clock size={16} />
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

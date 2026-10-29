@@ -83,6 +83,8 @@ interface AppContextType {
   setSelectedCategory: (catId: string | null) => void;
   customerTab: CustomerTab;
   setCustomerTab: (tab: CustomerTab) => void;
+  isRolePortalOpen: boolean;
+  setIsRolePortalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -95,15 +97,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
 
   // Phase 5: Customer Auth & Profile State
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>({
-    id: 1,
-    name: 'Jeet Jajal',
-    email: 'aditi@nexora.in',
-    phone: '9876543210',
-    status: 'ACTIVE',
-    roles: ['ROLE_CUSTOMER'],
-    accessToken: 'demo_token_authenticated',
-  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Restore session from localStorage safely on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nexora_user');
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      }
+    } catch {}
+  }, []);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [pastOrders, setPastOrders] = useState<PastOrder[]>([]);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -116,6 +120,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isTrackingOpen, setIsTrackingOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [isRolePortalOpen, setIsRolePortalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -349,7 +354,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ? crypto.randomUUID()
       : `idemp_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
-    const res = await ApiClient.placeOrder(payload, idempotencyKey);
+    const token = currentUser?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem('nexora_token') : null);
+    const res = await ApiClient.placeOrder(payload, idempotencyKey, token || undefined);
 
     const fullAddress = `${payload.address.flat}, ${payload.address.street}, ${payload.address.city} - ${payload.address.pincode}`;
 
@@ -459,6 +465,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedCategory,
         customerTab,
         setCustomerTab,
+        isRolePortalOpen,
+        setIsRolePortalOpen,
       }}
     >
       {children}

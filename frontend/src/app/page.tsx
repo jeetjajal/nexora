@@ -3,6 +3,7 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { RoleSwitcher } from '@/components/common/RoleSwitcher';
+import { RolePortalModal } from '@/components/common/RolePortalModal';
 import { Header } from '@/components/customer/Header';
 import { HeroBanner } from '@/components/customer/HeroBanner';
 import { CategoryBar } from '@/components/customer/CategoryBar';
@@ -240,6 +241,7 @@ export default function HomePage() {
       <AIChatbot />
       <AuthModal />
       <AccountModal />
+      <RolePortalModal />
       <WelcomeModal isOpen={isWelcomeOpen} onClose={() => setIsWelcomeOpen(false)} />
       <DeliveryFeedbackModal
         isOpen={isFeedbackOpen}
