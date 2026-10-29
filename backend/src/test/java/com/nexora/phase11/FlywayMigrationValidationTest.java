@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -19,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FlywayMigrationValidationTest {
 
     @Test
-    @DisplayName("Verify Flyway migrations V1 and V2 apply cleanly and idempotently")
+    @DisplayName("Verify Flyway migrations V1, V2, V3 and V4 apply cleanly and idempotently")
     void testFlywayMigrationsAgainstStagingDatabase() throws Exception {
         // 1. Setup isolated in-memory MySQL-compatible database simulating staging environment
         JdbcDataSource dataSource = new JdbcDataSource();
@@ -36,11 +37,11 @@ public class FlywayMigrationValidationTest {
 
         // 3. Execute migrations
         int appliedCount = flyway.migrate().migrationsExecuted;
-        assertEquals(3, appliedCount, "Should execute exactly 3 migration scripts (V1, V2 and V3)");
+        assertEquals(4, appliedCount, "Should execute exactly 4 migration scripts (V1, V2, V3 and V4)");
 
         // 4. Verify Migration Info & History
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertEquals(3, appliedMigrations.length);
+        assertEquals(4, appliedMigrations.length);
 
         assertEquals("1", appliedMigrations[0].getVersion().getVersion());
         assertEquals("init schema", appliedMigrations[0].getDescription());
@@ -53,6 +54,10 @@ public class FlywayMigrationValidationTest {
         assertEquals("3", appliedMigrations[2].getVersion().getVersion());
         assertEquals("seed catalogue categories", appliedMigrations[2].getDescription());
         assertEquals(MigrationState.SUCCESS, appliedMigrations[2].getState());
+
+        assertEquals("4", appliedMigrations[3].getVersion().getVersion());
+        assertEquals("complete quick commerce catalogue", appliedMigrations[3].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[3].getState());
 
         // 5. Verify physical schema tables generated in the database
         try (Connection conn = dataSource.getConnection()) {
@@ -86,6 +91,27 @@ public class FlywayMigrationValidationTest {
             assertTrue(tableNames.contains("notification_logs"), "Table 'notification_logs' should exist");
             assertTrue(tableNames.contains("idempotency_keys"), "Table 'idempotency_keys' should exist");
             assertTrue(tableNames.contains("flyway_schema_history"), "Flyway schema history table should exist");
+
+            // 31-Category Complete Catalogue tables from V4
+            assertTrue(tableNames.contains("subcategories"), "Table 'subcategories' should exist");
+            assertTrue(tableNames.contains("product_variants"), "Table 'product_variants' should exist");
+            assertTrue(tableNames.contains("store_inventory"), "Table 'store_inventory' should exist");
+
+            // Verify count of categories and subcategories in database
+            try (Statement stmt = conn.createStatement()) {
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM categories")) {
+                    assertTrue(rs.next());
+                    assertEquals(31, rs.getInt(1), "Database should contain exactly 31 main categories");
+                }
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM subcategories")) {
+                    assertTrue(rs.next());
+                    assertEquals(125, rs.getInt(1), "Database should contain exactly 125 subcategories");
+                }
+                try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM product_variants")) {
+                    assertTrue(rs.next());
+                    assertTrue(rs.getInt(1) >= 125, "Database should contain product variants for all subcategories");
+                }
+            }
         }
 
         // 6. Test Idempotency: Re-running migrate() should execute 0 migrations

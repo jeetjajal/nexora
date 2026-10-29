@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PRODUCTS } from '@/data/products';
-
 import { getBackendUrl } from '@/lib/server-config';
+
 const BACKEND_URL = getBackendUrl();
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get('categoryId');
+  const subcategoryId = searchParams.get('subcategoryId');
   const search = searchParams.get('q');
   const minPrice = searchParams.get('minPrice');
   const maxPrice = searchParams.get('maxPrice');
@@ -67,6 +68,10 @@ export async function GET(request: NextRequest) {
 
   if (categoryId) {
     list = list.filter(p => p.categoryId === categoryId);
+  }
+
+  if (subcategoryId) {
+    list = list.filter(p => p.subcategoryId === subcategoryId);
   }
 
   if (search) {

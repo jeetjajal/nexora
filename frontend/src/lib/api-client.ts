@@ -152,6 +152,19 @@ export class ApiClient {
     }
   }
 
+  // Subcategories
+  static async getSubcategories(categoryId?: string): Promise<Subcategory[]> {
+    try {
+      const url = categoryId ? `/api/subcategories?categoryId=${categoryId}` : '/api/subcategories';
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch subcategories');
+      const json = await res.json();
+      return json.data || [];
+    } catch {
+      return [];
+    }
+  }
+
   // Products
   static async getProducts(params?: { categoryId?: string; search?: string }): Promise<Product[]> {
     try {
