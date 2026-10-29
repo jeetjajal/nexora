@@ -26,9 +26,12 @@ import {
   Truck,
   CheckSquare,
   ShieldCheck,
+  TrendingUp,
+  BarChart3,
+  Calendar,
 } from 'lucide-react';
 
-type StoreStationTab = 'manager' | 'picker' | 'packing' | 'queue';
+type StoreStationTab = 'manager' | 'picker' | 'packing' | 'queue' | 'analytics';
 
 export const StoreOps: React.FC = () => {
   const { activeOrder, updateOrderStatus } = useApp();
@@ -38,6 +41,7 @@ export const StoreOps: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [inventorySearch, setInventorySearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [analyticsTimeframe, setAnalyticsTimeframe] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('DAILY');
 
   // Picker Station State
   const [pickerOrder, setPickerOrder] = useState<StoreQueueOrder | null>(null);
@@ -59,6 +63,14 @@ export const StoreOps: React.FC = () => {
   const [adjustmentReason, setAdjustmentReason] = useState('Fresh dark store replenishment');
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Store Analytics Data
+  const storeSalesAnalytics = {
+    DAILY: { sales: '₹48,290', orders: 164, units: 820, avgTime: '2.2 mins', topItems: ['Amul Taaza Milk 1L', 'Aashirvaad Atta 5kg', 'Fresh Tomatoes 1kg', 'Lay\'s Magic Masala'] },
+    WEEKLY: { sales: '₹3,42,800', orders: 1140, units: 5840, avgTime: '2.4 mins', topItems: ['Amul Butter 100g', 'Cadbury Silk', 'India Gate Basmati', 'Thums Up Can'] },
+    MONTHLY: { sales: '₹14,80,000', orders: 4920, units: 24900, avgTime: '2.3 mins', topItems: ['Amul Milk', 'Atta 5kg', 'Maggi Noodles', 'Surf Excel 1L'] },
+    YEARLY: { sales: '₹1,64,00,000', orders: 58400, units: 284000, avgTime: '2.3 mins', topItems: ['Daily Dairy', 'Fresh Produce', 'Munchies & Snacks', 'Atta & Rice'] },
+  };
 
   const fetchStoreData = async () => {
     setIsLoading(true);
@@ -108,7 +120,6 @@ export const StoreOps: React.FC = () => {
         reason: adjustmentReason,
       }).catch(() => null);
 
-      // Local update for responsive UI
       setInventory(prev =>
         prev.map(item => {
           if (item.productId === selectedStockItem.productId) {
@@ -171,23 +182,25 @@ export const StoreOps: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const currentAnalytics = storeSalesAnalytics[analyticsTimeframe];
+
   return (
     <div className="max-w-5xl mx-auto py-4 sm:py-6 px-3 sm:px-4 space-y-4">
-      {/* 1. Dark Store Hub Header */}
+      {/* 1. Dark Store Hub Header (Store Scoping) */}
       <div className="bg-white rounded-card border border-brand-border p-4 shadow-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <h2 className="text-base sm:text-lg font-black text-brand-text">
-                Dark Store Operations Hub
+                Dark Store Operations Hub #04
               </h2>
               <span className="text-[10px] bg-brand-primary text-white font-extrabold px-2 py-0.5 rounded-full">
-                STORE #04 &bull; SG HIGHWAY
+                SG HIGHWAY &bull; AHMEDABAD
               </span>
             </div>
             <p className="text-xs text-brand-muted mt-0.5">
-              Live operational station for Store Managers, Pickers, and Packers.
+              Assigned Store Manager: <strong className="text-brand-text">Maya Sharma</strong> &bull; Scoped strictly to Zone 1 Dark Store
             </p>
           </div>
 
@@ -217,7 +230,7 @@ export const StoreOps: React.FC = () => {
             onClick={() => setActiveTab('manager')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
               activeTab === 'manager'
-                ? 'bg-brand-primary text-white shadow-sm'
+                ? 'bg-brand-primary text-white shadow-sm font-black'
                 : 'bg-brand-bg text-brand-muted hover:text-brand-text hover:bg-brand-border/60'
             }`}
           >
@@ -229,7 +242,7 @@ export const StoreOps: React.FC = () => {
             onClick={() => setActiveTab('picker')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
               activeTab === 'picker'
-                ? 'bg-brand-primary text-white shadow-sm'
+                ? 'bg-brand-primary text-white shadow-sm font-black'
                 : 'bg-brand-bg text-brand-muted hover:text-brand-text hover:bg-brand-border/60'
             }`}
           >
@@ -241,7 +254,7 @@ export const StoreOps: React.FC = () => {
             onClick={() => setActiveTab('packing')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
               activeTab === 'packing'
-                ? 'bg-brand-primary text-white shadow-sm'
+                ? 'bg-brand-primary text-white shadow-sm font-black'
                 : 'bg-brand-bg text-brand-muted hover:text-brand-text hover:bg-brand-border/60'
             }`}
           >
@@ -250,10 +263,22 @@ export const StoreOps: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'analytics'
+                ? 'bg-brand-primary text-white shadow-sm font-black'
+                : 'bg-brand-bg text-brand-muted hover:text-brand-text hover:bg-brand-border/60'
+            }`}
+          >
+            <BarChart3 size={13} />
+            <span>Sales &amp; Volume Analytics</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('queue')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
               activeTab === 'queue'
-                ? 'bg-brand-primary text-white shadow-sm'
+                ? 'bg-brand-primary text-white shadow-sm font-black'
                 : 'bg-brand-bg text-brand-muted hover:text-brand-text hover:bg-brand-border/60'
             }`}
           >
@@ -282,7 +307,7 @@ export const StoreOps: React.FC = () => {
                 {metrics?.preparingCount ?? 2} Orders
               </span>
               <span className="text-[10px] text-emerald-600 font-semibold block mt-0.5">
-                Avg time: 2.4 mins
+                Avg pick time: 2.3 mins
               </span>
             </div>
 
@@ -291,7 +316,7 @@ export const StoreOps: React.FC = () => {
               <span className="text-xl sm:text-2xl font-black text-amber-600">
                 {metrics?.readyCount ?? 1} Bagged
               </span>
-              <span className="text-[10px] text-brand-muted block mt-0.5">3 Riders on standby</span>
+              <span className="text-[10px] text-brand-muted block mt-0.5">4 Standby EV Riders</span>
             </div>
 
             <div className="bg-white p-3 rounded-card border border-brand-border shadow-xs">
@@ -310,7 +335,7 @@ export const StoreOps: React.FC = () => {
                 {metrics?.lowStockCount ?? 2} Items
               </span>
               <span className="text-[10px] text-brand-danger font-semibold block mt-0.5">
-                Needs restock today
+                Restock alert active
               </span>
             </div>
           </div>
@@ -408,7 +433,88 @@ export const StoreOps: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Tab: Picker Station */}
+      {/* 4. Tab: Store Sales & Volume Analytics (Daily, Weekly, Monthly, Yearly) */}
+      {activeTab === 'analytics' && (
+        <div className="bg-white rounded-card border border-brand-border shadow-card p-5 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-border pb-3">
+            <div>
+              <h3 className="text-sm font-black text-brand-text uppercase tracking-wider flex items-center gap-2">
+                <TrendingUp size={16} className="text-brand-primary" />
+                <span>Store #04 Sales &amp; Dispatch Volume</span>
+              </h3>
+              <p className="text-xs text-brand-muted">Revenue &amp; inventory movement tracking for this micro-hub</p>
+            </div>
+
+            {/* Timeframe Selector Pills */}
+            <div className="flex items-center gap-1 bg-brand-bg p-1 rounded-lg border border-brand-border text-xs font-bold">
+              {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setAnalyticsTimeframe(tf)}
+                  className={`px-3 py-1 rounded-md transition-all ${
+                    analyticsTimeframe === tf
+                      ? 'bg-brand-primary text-white shadow-xs font-black'
+                      : 'text-brand-muted hover:text-brand-text'
+                  }`}
+                >
+                  {tf === 'DAILY' ? 'Daily' : tf === 'WEEKLY' ? 'Weekly' : tf === 'MONTHLY' ? 'Monthly' : 'Yearly'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 4 Performance KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 bg-brand-bg/50 rounded-lg border border-brand-border">
+              <span className="text-[10px] text-brand-muted font-bold block mb-0.5">Gross Revenue</span>
+              <span className="text-xl font-black text-brand-primary">{currentAnalytics.sales}</span>
+              <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">100% Fulfilled</span>
+            </div>
+
+            <div className="p-3.5 bg-brand-bg/50 rounded-lg border border-brand-border">
+              <span className="text-[10px] text-brand-muted font-bold block mb-0.5">Orders Delivered</span>
+              <span className="text-xl font-black text-brand-text">{currentAnalytics.orders} Orders</span>
+              <span className="text-[10px] text-brand-muted font-bold block mt-0.5">0 Cancellations</span>
+            </div>
+
+            <div className="p-3.5 bg-brand-bg/50 rounded-lg border border-brand-border">
+              <span className="text-[10px] text-brand-muted font-bold block mb-0.5">Total Units Sold</span>
+              <span className="text-xl font-black text-brand-text">{currentAnalytics.units} Items</span>
+              <span className="text-[10px] text-brand-muted font-bold block mt-0.5">Across 31 aisles</span>
+            </div>
+
+            <div className="p-3.5 bg-brand-bg/50 rounded-lg border border-brand-border">
+              <span className="text-[10px] text-brand-muted font-bold block mb-0.5">Avg Pick &amp; Pack</span>
+              <span className="text-xl font-black text-brand-primary">{currentAnalytics.avgTime}</span>
+              <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Top 5% speed in India</span>
+            </div>
+          </div>
+
+          {/* Top Selling SKUs in this Store */}
+          <div className="space-y-2 pt-2">
+            <h4 className="text-xs font-black text-brand-text uppercase tracking-wider">
+              Top Velocity Products in Store #04:
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {currentAnalytics.topItems.map((item, idx) => (
+                <div key={idx} className="p-2.5 bg-brand-bg/40 border border-brand-border rounded-lg flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-brand-primary text-white font-black text-[10px] flex items-center justify-center">
+                      #{idx + 1}
+                    </span>
+                    <span className="font-bold text-brand-text">{item}</span>
+                  </div>
+                  <span className="text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded text-[10px]">
+                    Fast Seller
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Tab: Picker Station */}
       {activeTab === 'picker' && (
         <div className="bg-white rounded-card border border-brand-border shadow-card overflow-hidden">
           <div className="bg-brand-primary text-white p-4 flex flex-wrap items-center justify-between gap-2">
@@ -450,7 +556,6 @@ export const StoreOps: React.FC = () => {
               Check off each SKU as you retrieve and place items into the tamper-proof tote:
             </p>
 
-            {/* Picking Items List */}
             <div className="divide-y divide-brand-border border border-brand-border rounded-card overflow-hidden">
               {(activeOrder
                 ? activeOrder.items.map((i, idx) => ({
@@ -508,7 +613,6 @@ export const StoreOps: React.FC = () => {
               })}
             </div>
 
-            {/* Complete Picking Action */}
             <div className="pt-2">
               <button
                 onClick={handleCompletePicking}
@@ -522,7 +626,7 @@ export const StoreOps: React.FC = () => {
         </div>
       )}
 
-      {/* 5. Tab: Packing & Seal Station */}
+      {/* 6. Tab: Packing & Seal Station */}
       {activeTab === 'packing' && (
         <div className="bg-white rounded-card border border-brand-border shadow-card overflow-hidden">
           <div className="bg-purple-900 text-white p-4 flex flex-wrap items-center justify-between gap-2">
@@ -562,7 +666,6 @@ export const StoreOps: React.FC = () => {
               </div>
             )}
 
-            {/* Bag Barcode Entry */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-brand-text flex items-center gap-1.5">
                 <Barcode size={14} className="text-brand-primary" />
@@ -577,7 +680,6 @@ export const StoreOps: React.FC = () => {
               />
             </div>
 
-            {/* Safety & Quality Checklist */}
             <div className="bg-brand-bg/50 p-3.5 rounded-card border border-brand-border space-y-2.5">
               <span className="text-[11px] font-black uppercase text-brand-muted block">
                 Quality &amp; Safety Checklist:
@@ -625,7 +727,7 @@ export const StoreOps: React.FC = () => {
         </div>
       )}
 
-      {/* 6. Tab: Live Dispatch Queue */}
+      {/* 7. Tab: Live Dispatch Queue */}
       {activeTab === 'queue' && (
         <div className="space-y-3">
           <div className="bg-white p-4 rounded-card border border-brand-border shadow-card flex items-center justify-between">
@@ -667,7 +769,7 @@ export const StoreOps: React.FC = () => {
         </div>
       )}
 
-      {/* 7. Stock Adjustment Modal */}
+      {/* 8. Stock Adjustment Modal */}
       {selectedStockItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 bg-brand-text/60 backdrop-blur-xs" onClick={() => setSelectedStockItem(null)} />

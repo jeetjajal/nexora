@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   RefreshCw,
   XCircle,
+  Navigation,
+  Star,
 } from 'lucide-react';
 
 export const OrderTrackingModal: React.FC = () => {
@@ -201,6 +203,47 @@ export const OrderTrackingModal: React.FC = () => {
               <Phone size={12} />
               <span>Call Rider</span>
             </a>
+          </div>
+
+          {/* Live GPS Radar & Route Visual */}
+          <div className="bg-white p-3 rounded-card border border-brand-border mt-3 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-brand-text flex items-center gap-1.5">
+                <Navigation size={13} className="text-brand-primary" />
+                <span>Live Delivery Radar</span>
+              </span>
+              <span className="text-[10px] font-black text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded">
+                {isDelivered ? 'Arrived at Doorstep' : '1.2 km away • Arriving in 4 mins'}
+              </span>
+            </div>
+
+            {/* Visual Route Progress Bar */}
+            <div className="relative pt-1 pb-0.5">
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full bg-gradient-to-r from-brand-primary via-brand-accent to-emerald-500 transition-all duration-500 ${
+                    isDelivered ? 'w-full' : 'w-3/4 animate-pulse'
+                  }`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-brand-muted mt-1.5">
+                <span>Dark Store #04 (SG Highway)</span>
+                <span className="font-bold text-brand-text">🛵 Ramesh Patel (EV)</span>
+                <span>Customer Doorstep</span>
+              </div>
+            </div>
+
+            {isDelivered && (
+              <div className="pt-2 border-t border-brand-border text-center">
+                <button
+                  onClick={() => setIsTrackingOpen(false)}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-button font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                >
+                  <Star size={13} className="fill-amber-300 text-amber-300" />
+                  <span>Rate Your Experience with Rider Ramesh</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

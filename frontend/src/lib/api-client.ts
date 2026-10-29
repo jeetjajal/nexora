@@ -3,6 +3,13 @@
  * Connects Next.js Frontend to Spring Boot REST Backend (or Next.js API Routes Proxy)
  */
 
+export interface Subcategory {
+  id: string;
+  name: string;
+  slug: string;
+  examples: string[];
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -10,6 +17,7 @@ export interface Category {
   icon: string;
   itemCount: number;
   highlight?: boolean;
+  subcategories?: Subcategory[];
 }
 
 export interface Product {

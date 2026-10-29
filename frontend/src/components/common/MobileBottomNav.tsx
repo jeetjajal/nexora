@@ -2,27 +2,55 @@
 
 import React from 'react';
 import { useApp, AppRole } from '@/context/AppContext';
-import { ShoppingBag, Bike, ShieldCheck, Box, ShoppingCart, ArrowRight } from 'lucide-react';
+import {
+  Home,
+  RotateCcw,
+  LayoutGrid,
+  User,
+  ShoppingCart,
+  ArrowRight,
+  ShoppingBag,
+  Bike,
+  Box,
+  ShieldCheck,
+} from 'lucide-react';
 
 export const MobileBottomNav: React.FC = () => {
-  const { role, setRole, getCartCount, getCartTotal, setIsCartOpen } = useApp();
+  const {
+    role,
+    setRole,
+    customerTab,
+    setCustomerTab,
+    getCartCount,
+    getCartTotal,
+    setIsCartOpen,
+  } = useApp();
 
   const cartCount = getCartCount();
   const cartTotal = getCartTotal();
 
-  const navItems: { id: AppRole; label: string; icon: React.ReactNode; badge?: string }[] = [
-    { id: 'customer', label: 'Store', icon: <ShoppingBag size={19} /> },
-    { id: 'delivery', label: 'Rider', icon: <Bike size={19} />, badge: 'Duty' },
-    { id: 'store', label: 'Store Ops', icon: <Box size={19} />, badge: 'Hub' },
-    { id: 'admin', label: 'Admin', icon: <ShieldCheck size={19} /> },
-  ];
-
-  const handleNavClick = (newRole: AppRole) => {
+  const handleNavRole = (newRole: AppRole) => {
     setRole(newRole);
     if (typeof window !== 'undefined' && window.location.pathname !== '/') {
       window.location.href = '/';
     }
   };
+
+  // Customer 4-tab Blinkit-style navigation items
+  const customerTabs: { id: 'home' | 'order_again' | 'categories' | 'profile'; label: string; icon: React.ReactNode }[] = [
+    { id: 'home', label: 'Home', icon: <Home size={19} /> },
+    { id: 'order_again', label: 'Order Again', icon: <RotateCcw size={19} /> },
+    { id: 'categories', label: 'Categories', icon: <LayoutGrid size={19} /> },
+    { id: 'profile', label: 'Profile', icon: <User size={19} /> },
+  ];
+
+  // Operator multi-role navigation items (for delivery, store, admin roles)
+  const operatorItems: { id: AppRole; label: string; icon: React.ReactNode; badge?: string }[] = [
+    { id: 'customer', label: 'Store', icon: <ShoppingBag size={19} /> },
+    { id: 'delivery', label: 'Rider', icon: <Bike size={19} />, badge: 'Duty' },
+    { id: 'store', label: 'Store Ops', icon: <Box size={19} />, badge: 'Hub' },
+    { id: 'admin', label: 'Admin', icon: <ShieldCheck size={19} /> },
+  ];
 
   return (
     <>
@@ -60,51 +88,95 @@ export const MobileBottomNav: React.FC = () => {
       {/* Main Persistent Mobile Bottom Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-brand-border/80 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-1 py-1.5 pb-safe">
         <div className="flex items-center justify-around max-w-md mx-auto">
-          {navItems.map((item) => {
-            const isActive = role === item.id;
-            return (
+          {role === 'customer' ? (
+            /* Blinkit-Style Customer Navigation */
+            <>
+              {customerTabs.map((item) => {
+                const isActive = customerTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setCustomerTab(item.id)}
+                    className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-lg transition-all ${
+                      isActive
+                        ? 'text-brand-primary font-black scale-105'
+                        : 'text-brand-muted hover:text-brand-text font-medium'
+                    }`}
+                  >
+                    <div className="relative">{item.icon}</div>
+                    <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.label}</span>
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-0.5" />
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Quick Cart Drawer Trigger */}
               <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-lg transition-all ${
-                  isActive
-                    ? 'text-brand-primary font-black scale-105'
-                    : 'text-brand-muted hover:text-brand-text font-medium'
-                }`}
+                onClick={() => setIsCartOpen(true)}
+                className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-brand-text hover:text-brand-primary font-medium transition-all"
               >
                 <div className="relative">
-                  {item.icon}
-                  {item.badge && (
-                    <span className="absolute -top-1 -right-2 text-[8px] px-1 py-0 rounded-full font-bold bg-brand-accent text-brand-text shadow-xs">
-                      {item.badge}
+                  <ShoppingCart size={19} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 bg-brand-accent text-brand-text text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      {cartCount}
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.label}</span>
-                {isActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-0.5" />
-                )}
-              </button>
-            );
-          })}
-
-          {/* Quick Cart Drawer Trigger */}
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-brand-text hover:text-brand-primary font-medium transition-all"
-          >
-            <div className="relative">
-              <ShoppingCart size={19} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 bg-brand-accent text-brand-text text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                  {cartCount}
+                <span className="text-[10px] mt-0.5 tracking-tight font-bold">
+                  {cartCount > 0 ? `₹${cartTotal}` : 'Cart'}
                 </span>
-              )}
-            </div>
-            <span className="text-[10px] mt-0.5 tracking-tight font-bold">
-              {cartCount > 0 ? `₹${cartTotal}` : 'Cart'}
-            </span>
-          </button>
+              </button>
+            </>
+          ) : (
+            /* Operator Multi-Role Navigation (Rider, Store Ops, Admin) */
+            <>
+              {operatorItems.map((item) => {
+                const isActive = role === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavRole(item.id)}
+                    className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-lg transition-all ${
+                      isActive
+                        ? 'text-brand-primary font-black scale-105'
+                        : 'text-brand-muted hover:text-brand-text font-medium'
+                    }`}
+                  >
+                    <div className="relative">
+                      {item.icon}
+                      {item.badge && (
+                        <span className="absolute -top-1 -right-2 text-[8px] px-1 py-0 rounded-full font-bold bg-brand-accent text-brand-text shadow-xs">
+                          {item.badge}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] mt-0.5 tracking-tight font-bold">{item.label}</span>
+                    {isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-brand-primary mt-0.5" />
+                    )}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="flex flex-col items-center justify-center flex-1 py-1 px-1 text-brand-text hover:text-brand-primary font-medium transition-all"
+              >
+                <div className="relative">
+                  <ShoppingCart size={19} />
+                  {cartCount > 0 && (
+                    <span className="absolute -top-1.5 -right-2 bg-brand-accent text-brand-text text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                      {cartCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] mt-0.5 tracking-tight font-bold">Cart</span>
+              </button>
+            </>
+          )}
         </div>
       </nav>
     </>

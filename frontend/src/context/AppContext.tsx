@@ -6,6 +6,7 @@ import { Category, CATEGORIES } from '@/data/categories';
 import { ApiClient, CheckoutPayload, UserProfile, SavedAddress, PastOrder } from '@/lib/api-client';
 
 export type AppRole = 'customer' | 'delivery' | 'admin' | 'store';
+export type CustomerTab = 'home' | 'order_again' | 'categories' | 'profile';
 
 export interface CartItem {
   product: Product;
@@ -80,12 +81,15 @@ interface AppContextType {
   setSearchQuery: (query: string) => void;
   selectedCategory: string | null;
   setSelectedCategory: (catId: string | null) => void;
+  customerTab: CustomerTab;
+  setCustomerTab: (tab: CustomerTab) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [role, setRole] = useState<AppRole>('customer');
+  const [customerTab, setCustomerTab] = useState<CustomerTab>('home');
   const [categories, setCategories] = useState<Category[]>(CATEGORIES);
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
@@ -453,6 +457,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSearchQuery,
         selectedCategory,
         setSelectedCategory,
+        customerTab,
+        setCustomerTab,
       }}
     >
       {children}

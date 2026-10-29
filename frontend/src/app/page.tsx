@@ -16,6 +16,11 @@ import { AccountModal } from '@/components/customer/AccountModal';
 import { DeliveryApp } from '@/components/delivery/DeliveryApp';
 import { SuperAdminDashboard } from '@/components/admin/SuperAdminDashboard';
 import { StoreOps } from '@/components/store/StoreOps';
+import { OrderAgainView } from '@/components/customer/OrderAgainView';
+import { CategoriesFullView } from '@/components/customer/CategoriesFullView';
+import { ProfileView } from '@/components/customer/ProfileView';
+import { DeliveryFeedbackModal } from '@/components/customer/DeliveryFeedbackModal';
+
 import { WelcomeModal } from '@/components/common/WelcomeModal';
 import { MobileBottomNav } from '@/components/common/MobileBottomNav';
 import { Sparkles, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
@@ -23,6 +28,8 @@ import { Sparkles, ShieldCheck, Truck, RefreshCw } from 'lucide-react';
 export default function HomePage() {
   const {
     role,
+    customerTab,
+    activeOrder,
     searchQuery,
     selectedCategory,
     categories,
@@ -36,6 +43,15 @@ export default function HomePage() {
   } = useApp();
 
   const [isWelcomeOpen, setIsWelcomeOpen] = React.useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
+
+  // Auto-trigger feedback when order delivered
+  React.useEffect(() => {
+    if (activeOrder && activeOrder.status === 'DELIVERED') {
+      const timer = setTimeout(() => setIsFeedbackOpen(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [activeOrder?.status]);
 
   // Filter products by selectedCategory or searchQuery
   const filteredProducts = products.filter((p) => {
@@ -68,8 +84,14 @@ export default function HomePage() {
           <Header />
 
           <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-3 space-y-4 pb-28 md:pb-8">
-            {/* Promotional Banners */}
-            {!selectedCategory && !searchQuery && <HeroBanner />}
+            {customerTab === 'order_again' && <OrderAgainView />}
+            {customerTab === 'categories' && <CategoriesFullView />}
+            {customerTab === 'profile' && <ProfileView />}
+
+            {customerTab === 'home' && (
+              <>
+                {/* Promotional Banners */}
+                {!selectedCategory && !searchQuery && <HeroBanner />}
 
             {/* Blinkit-Style Categories Navigation */}
             <CategoryBar />
@@ -163,6 +185,8 @@ export default function HomePage() {
                 </div>
               </div>
             </section>
+              </>
+            )}
           </main>
 
           {/* Customer Footer */}
@@ -217,6 +241,12 @@ export default function HomePage() {
       <AuthModal />
       <AccountModal />
       <WelcomeModal isOpen={isWelcomeOpen} onClose={() => setIsWelcomeOpen(false)} />
+      <DeliveryFeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        orderId={activeOrder?.id || 'NX-9042'}
+        riderName={activeOrder?.riderName || 'Ramesh Patel'}
+      />
     </div>
   );
 }

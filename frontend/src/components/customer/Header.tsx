@@ -9,6 +9,8 @@ export const Header: React.FC = () => {
   const {
     currentUser,
     savedAddresses,
+    customerTab,
+    setCustomerTab,
     setIsAuthOpen,
     setIsAccountOpen,
     getCartCount,
@@ -52,6 +54,34 @@ export const Header: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* Desktop Navigation Shortcuts */}
+            <div className="hidden xl:flex items-center gap-1.5 ml-1 border-l border-brand-border/80 pl-2">
+              <button
+                onClick={() => setCustomerTab('home')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                  customerTab === 'home' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'
+                }`}
+              >
+                Home
+              </button>
+              <button
+                onClick={() => setCustomerTab('order_again')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                  customerTab === 'order_again' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'
+                }`}
+              >
+                Order Again
+              </button>
+              <button
+                onClick={() => setCustomerTab('categories')}
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                  customerTab === 'categories' ? 'bg-brand-primary text-white shadow-xs' : 'text-brand-muted hover:text-brand-text hover:bg-brand-bg'
+                }`}
+              >
+                31 Categories
+              </button>
+            </div>
           </div>
 
           {/* Desktop Global Search Bar */}
@@ -80,7 +110,7 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {currentUser ? (
               <button
-                onClick={() => setIsAccountOpen(true)}
+                onClick={() => setCustomerTab('profile')}
                 className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-bold text-brand-text hover:text-brand-primary hover:bg-brand-bg rounded-button transition-colors border border-brand-border/80"
                 title="Open My Profile, Addresses & Orders"
               >
