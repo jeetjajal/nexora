@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/server-config';
-
-// Serviceable Dark Stores in Ahmedabad
-const DARK_STORES = [
-  { name: 'Nexora Dark Store SG Highway #04', code: 'DS-AHM-04', eta: 8 },
-  { name: 'Nexora Dark Store Vastrapur #02', code: 'DS-AHM-02', eta: 9 },
-  { name: 'Nexora Dark Store Prahlad Nagar #01', code: 'DS-AHM-01', eta: 10 },
-  { name: 'Nexora Dark Store Bopal #03', code: 'DS-AHM-03', eta: 11 },
-];
+import { resolveServiceableDarkStore, resolveAddressToCoordinates } from '@/lib/geofencing';
 
 export async function POST(request: NextRequest) {
   const BACKEND_URL = getBackendUrl();
@@ -34,6 +27,19 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
+    // Determine Geofenced Serviceable Dark Store based on coordinates or address
+    const coords = (address.latitude && address.longitude)
+      ? { lat: Number(address.latitude), lng: Number(address.longitude) }
+      : resolveAddressToCoordinates(`${address.flat || ''} ${address.street || ''} ${address.city || ''} ${address.pincode || ''}`);
+
+    const geofenceResult = resolveServiceableDarkStore(coords.lat, coords.lng);
+    const assignedStore = geofenceResult.selectedStore || {
+      name: 'Nexora Dark Store SG Highway #04',
+      code: 'DS-AHM-04',
+      id: 4,
+    };
+    const calculatedEta = geofenceResult.estimatedDeliveryMinutes || 8;
+
     // Authoritative calculations
     const subtotal = items.reduce((acc: number, item: any) => acc + (Number(item.price) * Number(item.quantity)), 0);
     const handlingFee = 4;
@@ -47,7 +53,6 @@ export async function POST(request: NextRequest) {
     }
 
     const finalAmount = Math.max(0, subtotal + handlingFee + deliveryFee - discount);
-    const darkStore = DARK_STORES[Math.floor(Math.random() * DARK_STORES.length)];
     const orderId = `NX-${Math.floor(100000 + Math.random() * 900000)}`;
     const deliveryOtp = String(Math.floor(1000 + Math.random() * 9000));
 
@@ -87,7 +92,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           status: 'SUCCESS',
           source: 'SPRING_BOOT_MYSQL',
-          message: 'Order created in MySQL database and assigned to dark store',
+          message: 'Order created in MySQL database and assigned to nearest geofenced dark store',
           data: {
             orderId: bOrder?.id ? `NX-${bOrder.id}` : orderId,
             numericId: bOrder?.id || null,
@@ -101,8 +106,8 @@ export async function POST(request: NextRequest) {
             paymentMethod: paymentMethod || 'RAZORPAY',
             paymentStatus: bOrder?.paymentStatus || (paymentMethod === 'COD' ? 'PENDING' : 'PAID'),
             deliveryOtp: bOrder?.deliveryOtp || deliveryOtp,
-            darkStore: bOrder?.storeName || darkStore.name,
-            etaMinutes: darkStore.eta,
+            darkStore: bOrder?.storeName || assignedStore.name,
+            etaMinutes: calculatedEta,
             assignedRider: {
               name: 'Ramesh Patel',
               vehicle: 'Hero Electric NYX EV',
@@ -114,7 +119,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // If backend returned non-OK, log and fallback to Rapid Commerce Engine unless strict enforcement is requested
       console.warn(`Spring Boot checkout returned ${backendRes.status}, switching to rapid commerce engine`);
       if (process.env.ENFORCE_BACKEND === 'true') {
         const errJson = await backendRes.json().catch(() => ({}));
@@ -138,7 +142,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       status: 'SUCCESS',
       source: 'NEXORA_RAPID_COMMERCE_ENGINE',
-      message: 'Order verified and assigned to nearest dark store',
+      message: 'Order verified and assigned to nearest geofenced dark store',
       data: {
         orderId,
         items,
@@ -151,8 +155,8 @@ export async function POST(request: NextRequest) {
         paymentMethod: paymentMethod || 'RAZORPAY',
         paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PAID',
         deliveryOtp,
-        darkStore: darkStore.name,
-        etaMinutes: darkStore.eta,
+        darkStore: assignedStore.name,
+        etaMinutes: calculatedEta,
         assignedRider: {
           name: 'Ramesh Patel',
           vehicle: 'Hero Electric NYX EV',

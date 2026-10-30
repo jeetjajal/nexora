@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ApiClient } from '@/lib/api-client';
 import {
@@ -17,6 +17,7 @@ import {
   UserCheck,
   Smartphone,
   Zap,
+  Wallet,
 } from 'lucide-react';
 
 const loadRazorpayScript = (): Promise<boolean> => {
@@ -57,12 +58,27 @@ export const CheckoutModal: React.FC = () => {
     pincode: '380054',
   });
   const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
+  const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'COD' | 'WALLET'>('RAZORPAY');
   const [selectedUpiApp, setSelectedUpiApp] = useState<'gpay' | 'phonepe' | 'paytm' | 'upi'>('gpay');
   const [deliveryNote, setDeliveryNote] = useState('Please leave near door / ring bell');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(250.0);
+
+  // Load wallet balance
+  useEffect(() => {
+    if (isCheckoutOpen && currentUser) {
+      fetch(`/api/wallet?userId=${currentUser.id || 1}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.data?.balance !== undefined) {
+            setWalletBalance(data.data.balance);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isCheckoutOpen, currentUser]);
 
   if (!isCheckoutOpen) return null;
 
@@ -108,19 +124,19 @@ export const CheckoutModal: React.FC = () => {
           tag: 'OTHER' as const,
         }
       : {
-          name: defaultAddresses.find(a => a.id === selectedAddress)?.name || currentUser?.name || 'Customer',
-          phone: defaultAddresses.find(a => a.id === selectedAddress)?.phone || currentUser?.phone || '+91 98765 43210',
-          flat: defaultAddresses.find(a => a.id === selectedAddress)?.flat || 'B-402',
-          street: defaultAddresses.find(a => a.id === selectedAddress)?.street || 'SG Highway',
-          city: defaultAddresses.find(a => a.id === selectedAddress)?.city || 'Ahmedabad',
-          pincode: defaultAddresses.find(a => a.id === selectedAddress)?.pincode || '380054',
+          name: defaultAddresses.find((a) => a.id === selectedAddress)?.name || currentUser?.name || 'Customer',
+          phone: defaultAddresses.find((a) => a.id === selectedAddress)?.phone || currentUser?.phone || '+91 98765 43210',
+          flat: defaultAddresses.find((a) => a.id === selectedAddress)?.flat || 'B-402',
+          street: defaultAddresses.find((a) => a.id === selectedAddress)?.street || 'SG Highway',
+          city: defaultAddresses.find((a) => a.id === selectedAddress)?.city || 'Ahmedabad',
+          pincode: defaultAddresses.find((a) => a.id === selectedAddress)?.pincode || '380054',
           tag: (selectedAddress === 'home' ? 'HOME' : 'WORK') as 'HOME' | 'WORK',
         };
   };
 
   const executeInstantOrderPlacement = async (orderIdToVerify?: string) => {
     const chosenAddr = getResolvedAddress();
-    const cartItems = getCartItems().map(item => ({
+    const cartItems = getCartItems().map((item) => ({
       productId: item.product.id,
       name: item.product.name,
       price: item.product.price,
@@ -129,7 +145,7 @@ export const CheckoutModal: React.FC = () => {
 
     const targetOrderId = orderIdToVerify || `order_nx_${Date.now()}`;
 
-    setProcessingStatus('Verifying instant UPI authorization...');
+    setProcessingStatus('Verifying instant payment authorization...');
     await ApiClient.verifyRazorpayPayment({
       razorpay_order_id: targetOrderId,
       razorpay_payment_id: `pay_upi_${Date.now()}`,
@@ -140,7 +156,7 @@ export const CheckoutModal: React.FC = () => {
     await createOrderWithBackend({
       items: cartItems,
       address: chosenAddr,
-      paymentMethod: 'RAZORPAY',
+      paymentMethod: paymentMethod === 'WALLET' ? 'RAZORPAY' : paymentMethod,
       couponCode: couponCode || undefined,
     });
   };
@@ -160,14 +176,53 @@ export const CheckoutModal: React.FC = () => {
     try {
       const chosenAddr = getResolvedAddress();
 
-      const cartItems = getCartItems().map(item => ({
+      const cartItems = getCartItems().map((item) => ({
         productId: item.product.id,
         name: item.product.name,
         price: item.product.price,
         quantity: item.quantity,
       }));
 
-      // 2. Online Razorpay / UPI Flow
+      // Flow A: Nexora Wallet Checkout
+      if (paymentMethod === 'WALLET') {
+        if (walletBalance < finalTotal) {
+          setErrorMsg(`Insufficient wallet balance (₹${walletBalance.toFixed(2)}). Please choose UPI or COD.`);
+          setIsProcessing(false);
+          return;
+        }
+
+        setProcessingStatus('Deducting from Nexora Wallet ledger...');
+        const tempOrderId = `NX-${Math.floor(100000 + Math.random() * 900000)}`;
+
+        const walletRes = await fetch('/api/wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id || '1',
+            amount: finalTotal,
+            action: 'PAY_ORDER',
+            orderId: tempOrderId,
+          }),
+        });
+
+        if (!walletRes.ok) {
+          const errData = await walletRes.json().catch(() => ({}));
+          throw new Error(errData.message || 'Wallet deduction failed');
+        }
+
+        setProcessingStatus('✓ Wallet debited! Assigning dark store & rider...');
+        await createOrderWithBackend({
+          items: cartItems,
+          address: chosenAddr,
+          paymentMethod: 'RAZORPAY', // Settled as paid
+          couponCode: couponCode || undefined,
+        });
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // Flow B: Online Razorpay / UPI Flow
       if (paymentMethod === 'RAZORPAY') {
         setProcessingStatus('Connecting to payment gateway...');
         const rzpOrder = await ApiClient.createRazorpayOrder(finalTotal, `rcpt_${Date.now()}`);
@@ -246,7 +301,7 @@ export const CheckoutModal: React.FC = () => {
           }
         }
 
-        // Fast UPI Simulator Mode (Guaranteed 100% success rate without iframe crashes)
+        // Fast UPI Simulator Mode
         const appNames: Record<string, string> = {
           gpay: 'Google Pay',
           phonepe: 'PhonePe',
@@ -266,7 +321,7 @@ export const CheckoutModal: React.FC = () => {
         return;
       }
 
-      // 3. Cash On Delivery Flow
+      // Flow C: Cash On Delivery Flow
       setProcessingStatus('Confirming Cash on Delivery order...');
       await createOrderWithBackend({
         items: cartItems,
@@ -491,49 +546,73 @@ export const CheckoutModal: React.FC = () => {
             <label className="block text-xs font-black text-brand-text mb-2 uppercase tracking-wider">
               3. Payment Option
             </label>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-3 gap-2.5 mb-3">
               {/* Online / Razorpay / UPI */}
               <div
                 onClick={() => setPaymentMethod('RAZORPAY')}
-                className={`p-3 rounded-card border cursor-pointer transition-all flex flex-col justify-between ${
+                className={`p-2.5 rounded-card border cursor-pointer transition-all flex flex-col justify-between ${
                   paymentMethod === 'RAZORPAY'
                     ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary'
                     : 'border-brand-border hover:bg-brand-bg'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <CreditCard
-                    size={18}
+                    size={16}
                     className={paymentMethod === 'RAZORPAY' ? 'text-brand-primary' : 'text-brand-muted'}
                   />
-                  <span className="text-[10px] bg-brand-accent text-brand-text font-black px-1.5 py-0.2 rounded">
-                    ⚡ Fast Pay
+                  <span className="text-[9px] bg-brand-accent text-brand-text font-black px-1 py-0.2 rounded">
+                    ⚡ Fast
                   </span>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-brand-text">UPI / Razorpay</p>
-                  <p className="text-[10px] text-brand-muted">GPay, PhonePe, Paytm, Cards</p>
+                  <p className="text-xs font-bold text-brand-text">UPI / Gateway</p>
+                  <p className="text-[10px] text-brand-muted">GPay, PhonePe</p>
+                </div>
+              </div>
+
+              {/* Nexora Wallet */}
+              <div
+                onClick={() => setPaymentMethod('WALLET')}
+                className={`p-2.5 rounded-card border cursor-pointer transition-all flex flex-col justify-between ${
+                  paymentMethod === 'WALLET'
+                    ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary'
+                    : 'border-brand-border hover:bg-brand-bg'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <Wallet
+                    size={16}
+                    className={paymentMethod === 'WALLET' ? 'text-brand-primary' : 'text-brand-muted'}
+                  />
+                  <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1 py-0.2 rounded">
+                    ₹{walletBalance.toFixed(0)}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-brand-text">Nexora Wallet</p>
+                  <p className="text-[10px] text-brand-muted">Instant 1-Tap</p>
                 </div>
               </div>
 
               {/* COD */}
               <div
                 onClick={() => setPaymentMethod('COD')}
-                className={`p-3 rounded-card border cursor-pointer transition-all flex flex-col justify-between ${
+                className={`p-2.5 rounded-card border cursor-pointer transition-all flex flex-col justify-between ${
                   paymentMethod === 'COD'
                     ? 'border-brand-primary bg-brand-primary/5 ring-1 ring-brand-primary'
                     : 'border-brand-border hover:bg-brand-bg'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-1.5">
                   <Banknote
-                    size={18}
+                    size={16}
                     className={paymentMethod === 'COD' ? 'text-brand-primary' : 'text-brand-muted'}
                   />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-brand-text">Cash on Delivery</p>
-                  <p className="text-[10px] text-brand-muted">Pay cash or UPI to rider at doorstep</p>
+                  <p className="text-xs font-bold text-brand-text">Doorstep Cash</p>
+                  <p className="text-[10px] text-brand-muted">Cash or UPI</p>
                 </div>
               </div>
             </div>
@@ -572,6 +651,21 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Wallet Info Pill (When WALLET is active) */}
+            {paymentMethod === 'WALLET' && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-card flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-emerald-900 font-bold block">Nexora Wallet Balance: ₹{walletBalance.toFixed(2)}</span>
+                  <span className="text-[11px] text-emerald-700">
+                    {walletBalance >= finalTotal
+                      ? '✓ Sufficient balance for instant zero-friction payment.'
+                      : '⚠️ Insufficient balance. Please choose UPI or COD above.'}
+                  </span>
+                </div>
+                <span className="text-sm font-black text-emerald-800">₹{finalTotal}</span>
+              </div>
+            )}
           </div>
 
           {/* Summary Box */}
@@ -603,9 +697,9 @@ export const CheckoutModal: React.FC = () => {
             </button>
           ) : (
             <button
-              disabled={isProcessing}
+              disabled={isProcessing || (paymentMethod === 'WALLET' && walletBalance < finalTotal)}
               onClick={handlePlaceOrder}
-              className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-85 text-white rounded-button font-black text-sm flex items-center justify-center gap-2 shadow-card transition-all active:scale-98"
+              className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-70 text-white rounded-button font-black text-sm flex items-center justify-center gap-2 shadow-card transition-all active:scale-98"
             >
               {isProcessing ? (
                 <>
@@ -615,7 +709,9 @@ export const CheckoutModal: React.FC = () => {
               ) : (
                 <>
                   <span>
-                    Pay ₹{finalTotal} & Confirm Order
+                    {paymentMethod === 'WALLET'
+                      ? `Pay ₹${finalTotal} with Wallet & Confirm`
+                      : `Pay ₹${finalTotal} & Confirm Order`}
                   </span>
                   <Clock size={16} />
                 </>

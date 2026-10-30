@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class FlywayMigrationValidationTest {
 
     @Test
-    @DisplayName("Verify Flyway migrations V1, V2, V3 and V4 apply cleanly and idempotently")
+    @DisplayName("Verify Flyway migrations V1 to V5 apply cleanly and idempotently")
     void testFlywayMigrationsAgainstStagingDatabase() throws Exception {
         // 1. Setup isolated in-memory MySQL-compatible database simulating staging environment
         JdbcDataSource dataSource = new JdbcDataSource();
@@ -37,11 +37,11 @@ public class FlywayMigrationValidationTest {
 
         // 3. Execute migrations
         int appliedCount = flyway.migrate().migrationsExecuted;
-        assertEquals(4, appliedCount, "Should execute exactly 4 migration scripts (V1, V2, V3 and V4)");
+        assertEquals(5, appliedCount, "Should execute exactly 5 migration scripts (V1, V2, V3, V4 and V5)");
 
         // 4. Verify Migration Info & History
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertEquals(4, appliedMigrations.length);
+        assertEquals(5, appliedMigrations.length);
 
         assertEquals("1", appliedMigrations[0].getVersion().getVersion());
         assertEquals("init schema", appliedMigrations[0].getDescription());
@@ -58,6 +58,10 @@ public class FlywayMigrationValidationTest {
         assertEquals("4", appliedMigrations[3].getVersion().getVersion());
         assertEquals("complete quick commerce catalogue", appliedMigrations[3].getDescription());
         assertEquals(MigrationState.SUCCESS, appliedMigrations[3].getState());
+
+        assertEquals("5", appliedMigrations[4].getVersion().getVersion());
+        assertEquals("nexora 2 features", appliedMigrations[4].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[4].getState());
 
         // 5. Verify physical schema tables generated in the database
         try (Connection conn = dataSource.getConnection()) {
@@ -96,6 +100,12 @@ public class FlywayMigrationValidationTest {
             assertTrue(tableNames.contains("subcategories"), "Table 'subcategories' should exist");
             assertTrue(tableNames.contains("product_variants"), "Table 'product_variants' should exist");
             assertTrue(tableNames.contains("store_inventory"), "Table 'store_inventory' should exist");
+
+            // NEXORA 2.0 tables from V5
+            assertTrue(tableNames.contains("delivery_locations"), "Table 'delivery_locations' should exist");
+            assertTrue(tableNames.contains("order_feedback"), "Table 'order_feedback' should exist");
+            assertTrue(tableNames.contains("wallet_accounts"), "Table 'wallet_accounts' should exist");
+            assertTrue(tableNames.contains("wallet_transactions"), "Table 'wallet_transactions' should exist");
 
             // Verify count of categories and subcategories in database
             try (Statement stmt = conn.createStatement()) {

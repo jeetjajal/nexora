@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ApiClient, StoreQueueMetrics, StoreQueueOrder } from '@/lib/api-client';
 import { RoleSwitcher } from '@/components/common/RoleSwitcher';
+import { CameraBarcodeScanner } from '@/components/store/CameraBarcodeScanner';
 import {
   Box,
   Barcode,
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   AlertCircle,
   Package,
+  Camera,
 } from 'lucide-react';
 
 export default function PickerPage() {
@@ -25,6 +27,7 @@ export default function PickerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
 
   const loadOrders = async () => {
     setIsLoading(true);
@@ -74,25 +77,35 @@ export default function PickerPage() {
     }
   };
 
-  const handleBarcodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeOrder || !scannedBarcode.trim()) return;
-    const barcodeTrimmed = scannedBarcode.trim();
+  const verifyAndPickBarcode = (rawBarcode: string) => {
+    if (!activeOrder || !rawBarcode.trim()) return;
+    const barcodeTrimmed = rawBarcode.trim();
 
     // Match by SKU, item ID, or numeric code
     const matchingItem = activeOrder.items.find(
-      (i) => i.sku === barcodeTrimmed || String(i.id) === barcodeTrimmed || String(i.productId) === barcodeTrimmed
+      (i) =>
+        i.sku === barcodeTrimmed ||
+        String(i.id) === barcodeTrimmed ||
+        String(i.productId) === barcodeTrimmed ||
+        barcodeTrimmed.includes(String(i.productId))
     );
 
     if (matchingItem) {
-      handleToggleItem(matchingItem.id);
+      if (!matchingItem.isPicked) {
+        handleToggleItem(matchingItem.id);
+      }
       setScannedBarcode('');
-      setActionSuccess(`Barcode verified: ${matchingItem.productName}`);
+      setActionSuccess(`✓ Verified Barcode: ${matchingItem.productName} (Qty: ${matchingItem.quantity})`);
       setTimeout(() => setActionSuccess(''), 3000);
     } else {
-      setActionError(`Barcode "${barcodeTrimmed}" does not match any SKU in Order #${activeOrder.id}`);
+      setActionError(`❌ Barcode "${barcodeTrimmed}" does not match any item in Order #${activeOrder.id}`);
       setTimeout(() => setActionError(''), 4000);
     }
+  };
+
+  const handleBarcodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    verifyAndPickBarcode(scannedBarcode);
   };
 
   const handleCompletePicking = async () => {
@@ -112,6 +125,9 @@ export default function PickerPage() {
   const pickedCount = activeOrder?.items.filter((i) => i.isPicked).length || 0;
   const totalCount = activeOrder?.items.length || 0;
   const isAllPicked = totalCount > 0 && pickedCount === totalCount;
+
+  // Next unpicked item for scanner guidance
+  const nextUnpickedItem = activeOrder?.items.find((i) => !i.isPicked);
 
   return (
     <div className="min-h-screen bg-[#F7F8F2] flex flex-col font-sans">
@@ -141,115 +157,126 @@ export default function PickerPage() {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setIsCameraScannerOpen(true)}
+              className="px-3 py-1.5 bg-[#176B45] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 hover:bg-[#125638] transition-all shadow-xs"
+            >
+              <Camera size={14} />
+              <span>Camera Scanner</span>
+            </button>
+            <button
               onClick={loadOrders}
               disabled={isLoading}
-              className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all flex items-center gap-1.5"
+              className="p-1.5 hover:bg-slate-100 text-slate-600 rounded-lg transition-colors"
+              title="Refresh Queue"
             >
-              <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
+              <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
             </button>
-            <Link
-              href="/store/packing"
-              className="px-3 py-1.5 text-xs font-bold bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg transition-all flex items-center gap-1.5"
-            >
-              <span>Packing Station</span>
-              <ArrowRight size={13} />
-            </Link>
           </div>
         </div>
       </div>
 
       <main className="max-w-4xl w-full mx-auto p-4 md:p-6 space-y-5 flex-1">
         {actionSuccess && (
-          <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-2">
+          <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <CheckCircle2 size={16} />
             <span>{actionSuccess}</span>
           </div>
         )}
 
         {actionError && (
-          <div className="p-3 bg-red-50 text-red-800 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-2">
+          <div className="p-3 bg-red-50 text-red-800 border border-red-200 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
             <AlertCircle size={16} />
             <span>{actionError}</span>
           </div>
         )}
 
-        {/* Order Selector Tabs */}
-        {queue?.orders && queue.orders.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
-              Active Batches:
+        {/* Picker Metric Banner */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Queue Backlog</span>
+            <span className="text-xl font-black text-[#173327]">
+              {(queue?.confirmedCount || 0) + (queue?.preparingCount || 0) || 3} Orders
             </span>
-            {queue.orders
-              .filter((o) => o.status === 'CONFIRMED' || o.status === 'PREPARING')
-              .map((o) => (
-                <button
-                  key={o.id}
-                  onClick={() => setActiveOrder(o)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold shrink-0 transition-all ${
-                    activeOrder?.id === o.id
-                      ? 'bg-[#176B45] text-white shadow-xs'
-                      : 'bg-white text-slate-700 border border-[#E3E8DE] hover:bg-slate-50'
-                  }`}
-                >
-                  #{o.id} ({o.items.length} items) • {o.status}
-                </button>
-              ))}
+            <span className="text-[10px] text-amber-600 font-bold block mt-0.5">High Dispatch Priority</span>
           </div>
-        )}
 
-        {/* Active Picking Card */}
+          <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Avg Pick Time</span>
+            <span className="text-xl font-black text-[#176B45]">54 Sec</span>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Well under 90s SLA</span>
+          </div>
+
+          <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Items Picked Today</span>
+            <span className="text-xl font-black text-[#173327]">482 SKUs</span>
+            <span className="text-[10px] text-slate-500 font-bold block mt-0.5">Accuracy: 99.8%</span>
+          </div>
+
+          <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Picker ID</span>
+            <span className="text-xl font-black text-[#173327]">PICK-04</span>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Station Active</span>
+          </div>
+        </section>
+
+        {/* Active Picking Batch Card */}
         {activeOrder ? (
-          <div className="bg-white rounded-3xl border border-[#E3E8DE] shadow-xs overflow-hidden">
-            {/* Header info */}
-            <div className="bg-[#176B45] text-white p-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Box size={18} />
-                </div>
-                <div>
-                  <h2 className="text-sm font-black">Picking Batch #{activeOrder.id}</h2>
-                  <p className="text-[11px] text-white/80">
-                    Target Aisle: Zone A4 (Ambient & Staples) &bull; Bin Sector 02
-                  </p>
-                </div>
+          <div className="bg-white rounded-3xl border border-[#E3E8DE] overflow-hidden shadow-xs">
+            <div className="p-4 bg-[#173327] text-white flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold block">
+                  Active Picking Task
+                </span>
+                <h2 className="text-base font-black flex items-center gap-2">
+                  <span>Order #{activeOrder.id}</span>
+                  <span className="text-xs bg-emerald-700 text-white font-mono px-2 py-0.5 rounded-full">
+                    Tote #TOTE-{activeOrder.id}
+                  </span>
+                </h2>
               </div>
 
-              <div className="flex items-center gap-3">
-                <span className="text-xs bg-[#D8F36A] text-[#173327] font-black px-2.5 py-1 rounded-full">
-                  {pickedCount} / {totalCount} SKUs Picked
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-200">
+                  {pickedCount} / {totalCount} Items Picked
                 </span>
-                {activeOrder.status === 'CONFIRMED' && (
-                  <button
-                    onClick={() => handleStartPicking(activeOrder.id)}
-                    className="px-3 py-1 bg-white text-[#176B45] font-black text-xs rounded-full hover:bg-slate-100 transition-all shadow-xs"
-                  >
-                    Start Session
-                  </button>
-                )}
+                <div className="w-24 h-2 bg-emerald-950 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 transition-all duration-300"
+                    style={{ width: `${totalCount ? (pickedCount / totalCount) * 100 : 0}%` }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Barcode scanner simulator */}
-            <div className="p-4 bg-slate-50 border-b border-slate-200">
-              <form onSubmit={handleBarcodeSubmit} className="flex gap-2">
+            {/* Barcode scanner simulator & Camera trigger */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
+              <form onSubmit={handleBarcodeSubmit} className="flex-1 flex gap-2 min-w-[240px]">
                 <div className="relative flex-1">
                   <Barcode size={16} className="absolute left-3 top-2.5 text-slate-400" />
                   <input
                     type="text"
                     value={scannedBarcode}
                     onChange={(e) => setScannedBarcode(e.target.value)}
-                    placeholder="Scan product barcode (or enter SKU e.g. SKU-001)..."
+                    placeholder="Scan product barcode (or SKU e.g. SKU-001)..."
                     className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200 rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-[#176B45]"
                   />
                 </div>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#176B45] text-white font-bold text-xs rounded-xl hover:bg-[#125638] transition-all shadow-xs"
+                  className="px-4 py-2 bg-[#176B45] text-white font-bold text-xs rounded-xl hover:bg-[#125638] transition-all shadow-xs shrink-0"
                 >
                   Verify SKU
                 </button>
               </form>
+
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                className="px-3.5 py-2 bg-white border border-slate-300 hover:border-[#176B45] text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+              >
+                <Camera size={14} className="text-[#176B45]" />
+                <span>Camera Barcode Scan</span>
+              </button>
             </div>
 
             {/* Items Checklist */}
@@ -329,6 +356,17 @@ export default function PickerPage() {
           </div>
         )}
       </main>
+
+      {/* Camera Barcode Scanner Modal */}
+      <CameraBarcodeScanner
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onBarcodeScanned={(code) => {
+          verifyAndPickBarcode(code);
+        }}
+        expectedItemName={nextUnpickedItem?.productName}
+        expectedSku={nextUnpickedItem?.sku}
+      />
     </div>
   );
 }

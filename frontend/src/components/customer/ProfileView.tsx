@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   User,
@@ -21,7 +21,21 @@ import {
   Clock,
   Sparkles,
   ArrowRight,
+  ArrowDownLeft,
+  ArrowUpRight,
+  RefreshCw,
 } from 'lucide-react';
+
+interface WalletTxItem {
+  id: string;
+  transactionUuid: string;
+  transactionType: 'CREDIT' | 'DEBIT';
+  category: string;
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  createdAt: string;
+}
 
 export const ProfileView: React.FC = () => {
   const {
@@ -50,6 +64,64 @@ export const ProfileView: React.FC = () => {
     pincode: '380054',
   });
   const [addrMsg, setAddrMsg] = useState<string | null>(null);
+
+  // Wallet State
+  const [walletBalance, setWalletBalance] = useState<number>(250.0);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTxItem[]>([]);
+  const [topupLoading, setTopupLoading] = useState(false);
+  const [topupSuccess, setTopupSuccess] = useState<string | null>(null);
+
+  const fetchWallet = async () => {
+    try {
+      const res = await fetch(`/api/wallet?userId=${currentUser?.id || 1}`);
+      const data = await res.json();
+      if (data?.data?.balance !== undefined) {
+        setWalletBalance(data.data.balance);
+      }
+
+      const txRes = await fetch(`/api/wallet/transactions?userId=${currentUser?.id || 1}`);
+      const txData = await txRes.json();
+      if (Array.isArray(txData?.data)) {
+        setWalletTransactions(txData.data);
+      }
+    } catch {
+      // Fallback state active
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchWallet();
+    }
+  }, [currentUser]);
+
+  const handleTopup = async (amount: number) => {
+    setTopupLoading(true);
+    setTopupSuccess(null);
+    try {
+      const res = await fetch('/api/wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.id || '1',
+          amount,
+          action: 'TOPUP',
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        setWalletBalance(json.data.wallet.balance);
+        setTopupSuccess(`✓ ₹${amount} added to your Nexora Wallet successfully!`);
+        fetchWallet();
+        setTimeout(() => setTopupSuccess(null), 3000);
+      }
+    } catch {
+      // Handled gracefully
+    } finally {
+      setTopupLoading(false);
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -140,7 +212,17 @@ export const ProfileView: React.FC = () => {
               : 'bg-white text-brand-muted hover:text-brand-text border border-brand-border'
           }`}
         >
-          Dashboard &amp; Wallet
+          Dashboard &amp; Overview
+        </button>
+        <button
+          onClick={() => setActiveSection('WALLET')}
+          className={`px-4 py-2 rounded-button text-xs font-bold transition-all whitespace-nowrap ${
+            activeSection === 'WALLET'
+              ? 'bg-brand-primary text-white shadow-xs'
+              : 'bg-white text-brand-muted hover:text-brand-text border border-brand-border'
+          }`}
+        >
+          Nexora Wallet (₹{walletBalance.toFixed(2)})
         </button>
         <button
           onClick={() => setActiveSection('ORDERS')}
@@ -164,15 +246,18 @@ export const ProfileView: React.FC = () => {
         </button>
       </div>
 
-      {/* 3. Section: Dashboard & Wallet Overview */}
+      {/* 3. Section: Dashboard Overview */}
       {activeSection === 'OVERVIEW' && (
         <div className="space-y-4">
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white p-3.5 rounded-card border border-brand-border shadow-xs">
+            <div
+              onClick={() => setActiveSection('WALLET')}
+              className="bg-white p-3.5 rounded-card border border-brand-border shadow-xs cursor-pointer hover:border-brand-primary transition-colors"
+            >
               <span className="text-[11px] text-brand-muted font-bold block mb-0.5">Nexora Wallet</span>
-              <span className="text-xl font-black text-brand-primary">₹250.00</span>
-              <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Cashback balance</span>
+              <span className="text-xl font-black text-brand-primary">₹{walletBalance.toFixed(2)}</span>
+              <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Instant refunds &amp; cash</span>
             </div>
 
             <div className="bg-white p-3.5 rounded-card border border-brand-border shadow-xs">
@@ -194,8 +279,24 @@ export const ProfileView: React.FC = () => {
             </div>
           </div>
 
-          {/* Blinkit-Style Action Cards */}
+          {/* Action Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div
+              onClick={() => setActiveSection('WALLET')}
+              className="bg-white p-4 rounded-card border border-brand-border shadow-xs hover:border-brand-primary cursor-pointer transition-all flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-brand-text">Nexora Wallet &amp; Refunds</h4>
+                  <p className="text-[11px] text-brand-muted">₹{walletBalance.toFixed(2)} balance • 1-click checkout</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-brand-muted" />
+            </div>
+
             <div
               onClick={() => setActiveSection('ORDERS')}
               className="bg-white p-4 rounded-card border border-brand-border shadow-xs hover:border-brand-primary cursor-pointer transition-all flex items-center justify-between"
@@ -244,21 +345,6 @@ export const ProfileView: React.FC = () => {
               <ChevronRight size={16} className="text-brand-muted" />
             </div>
 
-            <div className="bg-white p-4 rounded-card border border-brand-border shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <h4 className="text-xs font-black text-brand-text">100% Quality Guarantee</h4>
-                  <p className="text-[11px] text-brand-muted">Instant refund or replacement at doorstep</p>
-                </div>
-              </div>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
-                Active
-              </span>
-            </div>
-
             {/* Staff & Partner Portal Entry */}
             <div
               onClick={() => setIsRolePortalOpen(true)}
@@ -284,7 +370,124 @@ export const ProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* 4. Section: Orders History */}
+      {/* 4. Section: Nexora Wallet & Passbook Ledger */}
+      {activeSection === 'WALLET' && (
+        <div className="space-y-4">
+          {topupSuccess && (
+            <div className="p-3 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-2xl text-xs font-bold flex items-center gap-2">
+              <CheckCircle2 size={16} />
+              <span>{topupSuccess}</span>
+            </div>
+          )}
+
+          {/* Wallet Balance Hero Card */}
+          <div className="bg-gradient-to-br from-[#0c831f] to-[#085a15] rounded-3xl p-6 text-white shadow-md relative overflow-hidden">
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold text-white/80 block uppercase tracking-wider">
+                  Available Wallet Balance
+                </span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-3xl sm:text-4xl font-black">₹{walletBalance.toFixed(2)}</span>
+                  <span className="text-xs text-white/80 font-bold">INR</span>
+                </div>
+                <p className="text-xs text-emerald-100 mt-2 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-brand-accent" />
+                  <span>100% Secure • Instant 1-Tap Rapid Checkout</span>
+                </p>
+              </div>
+
+              {/* Quick Add Money Buttons */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-white/80 block">Add Money to Wallet:</span>
+                <div className="flex items-center gap-2">
+                  {[100, 200, 500].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      disabled={topupLoading}
+                      onClick={() => handleTopup(amt)}
+                      className="px-3 py-1.5 bg-white/20 hover:bg-white text-white hover:text-brand-text rounded-xl text-xs font-bold transition-all border border-white/30 active:scale-95 shadow-xs"
+                    >
+                      +₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Wallet Passbook / Ledger Transactions */}
+          <div className="bg-white rounded-3xl border border-brand-border p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-brand-text">Passbook &amp; Transaction Ledger</h3>
+              <button
+                type="button"
+                onClick={fetchWallet}
+                className="text-xs text-brand-primary font-bold hover:underline flex items-center gap-1"
+              >
+                <RefreshCw size={12} />
+                <span>Refresh</span>
+              </button>
+            </div>
+
+            {walletTransactions.length > 0 ? (
+              <div className="divide-y divide-brand-border">
+                {walletTransactions.map((tx) => (
+                  <div key={tx.id || tx.transactionUuid} className="py-3 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-black ${
+                          tx.transactionType === 'CREDIT'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}
+                      >
+                        {tx.transactionType === 'CREDIT' ? (
+                          <ArrowDownLeft size={16} />
+                        ) : (
+                          <ArrowUpRight size={16} />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-brand-text">{tx.description}</p>
+                        <p className="text-[10px] text-brand-muted font-mono">
+                          {new Date(tx.createdAt).toLocaleString([], {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}{' '}
+                          &bull; Category: {tx.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span
+                        className={`font-black text-sm block ${
+                          tx.transactionType === 'CREDIT' ? 'text-emerald-700' : 'text-slate-800'
+                        }`}
+                      >
+                        {tx.transactionType === 'CREDIT' ? '+' : '-'}₹{tx.amount.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] text-brand-muted">
+                        Bal: ₹{tx.balanceAfter.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-brand-muted">
+                No previous wallet deductions on record. All transactions are logged here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Section: Orders History */}
       {activeSection === 'ORDERS' && (
         <div className="bg-white rounded-card border border-brand-border shadow-xs p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -312,7 +515,6 @@ export const ProfileView: React.FC = () => {
                   <span className="text-sm font-black text-brand-primary mr-2">₹{order.amount}</span>
                   <button
                     onClick={() => {
-                      // Add first 2 staple products to cart
                       if (products.length > 0) addToCart(products[0].id);
                       setIsCartOpen(true);
                     }}
@@ -327,7 +529,7 @@ export const ProfileView: React.FC = () => {
         </div>
       )}
 
-      {/* 5. Section: Saved Addresses */}
+      {/* 6. Section: Saved Addresses */}
       {activeSection === 'ADDRESSES' && (
         <div className="bg-white rounded-card border border-brand-border shadow-xs p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between">

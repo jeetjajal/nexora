@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ApiClient, StoreQueueMetrics, StoreQueueOrder } from '@/lib/api-client';
 import { RoleSwitcher } from '@/components/common/RoleSwitcher';
+import { CameraBarcodeScanner } from '@/components/store/CameraBarcodeScanner';
 import {
   PackageCheck,
   ShieldCheck,
@@ -15,6 +16,7 @@ import {
   AlertCircle,
   Truck,
   Barcode,
+  Camera,
 } from 'lucide-react';
 
 export default function PackingPage() {
@@ -26,6 +28,7 @@ export default function PackingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
 
   const loadOrders = async () => {
     setIsLoading(true);
@@ -48,14 +51,21 @@ export default function PackingPage() {
     loadOrders();
   }, []);
 
-  const handleCompletePacking = async () => {
+  const handleSealAndDispatch = async () => {
     if (!activeOrder) return;
-    if (!bagCode.trim()) {
-      setActionError('Tamper-evident bag barcode is required');
+
+    if (!bagCode.trim() || bagCode.trim() === 'BAG-NX-') {
+      setActionError('Please scan or enter a valid security bag barcode.');
       return;
     }
-    if (!isBagSealed || !isWeightVerified) {
-      setActionError('Please confirm the bag seal and weight verification checklist');
+
+    if (!isBagSealed) {
+      setActionError('Tamper-evident green security seal confirmation is mandatory.');
+      return;
+    }
+
+    if (!isWeightVerified) {
+      setActionError('Scales check confirmation is mandatory before handover.');
       return;
     }
 
@@ -208,9 +218,19 @@ export default function PackingPage() {
 
               {/* Quality & Tamper-Evident Bag Verification */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  2. Quality Seal & Bagging
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    2. Quality Seal & Bagging
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsCameraScannerOpen(true)}
+                    className="px-2.5 py-1 bg-white border border-slate-300 hover:border-purple-600 text-purple-700 text-xs font-bold rounded-lg flex items-center gap-1 shadow-xs"
+                  >
+                    <Camera size={13} />
+                    <span>Scan Bag Barcode</span>
+                  </button>
+                </div>
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
@@ -246,33 +266,45 @@ export default function PackingPage() {
                       onChange={(e) => setIsWeightVerified(e.target.checked)}
                       className="rounded border-slate-300 text-purple-700 focus:ring-purple-700 w-4 h-4 cursor-pointer"
                     />
-                    <span>Scale weight verified within tolerance (&plusmn;15g)</span>
+                    <span>Scale sensor check passed (&plusmn;15g variance within tolerance)</span>
                   </label>
                 </div>
               </div>
 
-              {/* Handoff button */}
-              <div className="pt-2">
-                <button
-                  onClick={handleCompletePacking}
-                  className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-99"
-                >
-                  <Truck size={16} />
-                  <span>Seal Bag & Dispatch to Delivery Partner (Ramesh Patel)</span>
-                </button>
-              </div>
+              {/* Handover Action */}
+              <button
+                onClick={handleSealAndDispatch}
+                className="w-full py-3.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
+              >
+                <Truck size={16} />
+                <span>Handover Sealed Bag to Rider Fleet & Confirm Dispatch</span>
+              </button>
             </div>
           </div>
         ) : (
           <div className="bg-white p-12 rounded-3xl border border-[#E3E8DE] text-center shadow-xs">
             <PackageCheck size={40} className="mx-auto text-slate-300 mb-2" />
-            <h3 className="text-sm font-bold text-slate-800">No Orders Awaiting Packing</h3>
+            <h3 className="text-sm font-bold text-slate-800">No Orders Ready for Bagging</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Once store pickers complete item batches, orders will immediately appear here for bag sealing.
+              Once the picker finishes scanning items at the picking station, the order will appear here for bag sealing.
             </p>
           </div>
         )}
       </main>
+
+      {/* Camera Barcode Scanner for Bag Barcode */}
+      <CameraBarcodeScanner
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onBarcodeScanned={(code) => {
+          setBagCode(code);
+          setIsCameraScannerOpen(false);
+          setActionSuccess(`✓ Scanned Bag Barcode: ${code}`);
+          setTimeout(() => setActionSuccess(''), 3000);
+        }}
+        expectedItemName={`Tamper-Evident Bag for Order #${activeOrder?.id || ''}`}
+        expectedSku="BAG-SEAL-EAN"
+      />
     </div>
   );
 }
