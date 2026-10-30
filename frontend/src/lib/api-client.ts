@@ -406,7 +406,7 @@ export class ApiClient {
     keyId: string;
     mode?: 'LIVE_GATEWAY' | 'SANDBOX_SIMULATION';
   }> {
-    const res = await fetch('/api/payments/razorpay/create-order', {
+    const res = await fetch('/api/payment/create-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, receipt }),
@@ -429,7 +429,7 @@ export class ApiClient {
     razorpay_payment_id: string;
     razorpay_signature: string;
   }): Promise<{ verified: boolean; message: string }> {
-    const res = await fetch('/api/payments/razorpay/verify', {
+    const res = await fetch('/api/payment/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

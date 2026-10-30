@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ApiClient } from '@/lib/api-client';
+import { handleRazorpayCheckout } from '@/lib/razorpay';
 import {
   X,
   MapPin,
@@ -222,102 +223,40 @@ export const CheckoutModal: React.FC = () => {
         return;
       }
 
-      // Flow B: Online Razorpay / UPI Flow
+      // Flow B: Online Razorpay / UPI Flow (Production 3-Step Architecture)
       if (paymentMethod === 'RAZORPAY') {
-        setProcessingStatus('Connecting to payment gateway...');
-        const rzpOrder = await ApiClient.createRazorpayOrder(finalTotal, `rcpt_${Date.now()}`);
-
-        const isRealRazorpayKey =
-          rzpOrder.mode === 'LIVE_GATEWAY' &&
-          Boolean(rzpOrder.keyId) &&
-          (rzpOrder.keyId.startsWith('rzp_test_') || rzpOrder.keyId.startsWith('rzp_live_')) &&
-          rzpOrder.keyId !== 'rzp_test_nexora_sandbox' &&
-          rzpOrder.keyId !== 'rzp_test_mock_id' &&
-          Boolean(rzpOrder.id) &&
-          !rzpOrder.id.startsWith('order_nx_');
-
-        // Only open the official external Razorpay iframe if a genuine Razorpay key is active
-        if (isRealRazorpayKey) {
-          const isScriptLoaded = await loadRazorpayScript();
-
-          if (isScriptLoaded && typeof window !== 'undefined' && (window as any).Razorpay) {
-            const options = {
-              key: rzpOrder.keyId,
-              amount: rzpOrder.amount,
-              currency: rzpOrder.currency || 'INR',
-              name: 'NEXORA Quick Commerce',
-              description: '10-Minute Rapid Grocery Delivery',
-              image: '/assets/brand/app-icon.png',
-              order_id: rzpOrder.id,
-              prefill: {
-                name: chosenAddr.name || currentUser.name || 'Customer',
-                email: currentUser.email || 'customer@nexora.in',
-                contact: chosenAddr.phone || currentUser.phone || '9876543210',
-              },
-              theme: {
-                color: '#0c831f',
-              },
-              handler: async function (response: any) {
-                try {
-                  setProcessingStatus('Verifying payment signature...');
-                  await ApiClient.verifyRazorpayPayment({
-                    razorpay_order_id: response.razorpay_order_id || rzpOrder.id,
-                    razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
-                    razorpay_signature: response.razorpay_signature || 'verified_sig',
-                  });
-
-                  setProcessingStatus('Assigning dark store & rider...');
-                  await createOrderWithBackend({
-                    items: cartItems,
-                    address: chosenAddr,
-                    paymentMethod: 'RAZORPAY',
-                    couponCode: couponCode || undefined,
-                  });
-                  setIsProcessing(false);
-                } catch (err: any) {
-                  setErrorMsg(err.message || 'Payment verification failed');
-                  setIsProcessing(false);
-                }
-              },
-              modal: {
-                ondismiss: function () {
-                  setErrorMsg('Payment window closed. Tap below to complete order via 1-Click Instant UPI.');
-                  setIsProcessing(false);
-                },
-              },
-            };
-
-            try {
-              const rzp = new (window as any).Razorpay(options);
-              rzp.on('payment.failed', function () {
-                setErrorMsg('Payment was interrupted. Tap below to complete order via 1-Click Instant UPI.');
-                setIsProcessing(false);
-              });
-              rzp.open();
-              return;
-            } catch {
-              // Fallback to Instant UPI simulation below
-            }
-          }
-        }
-
-        // Fast UPI Simulator Mode
-        const appNames: Record<string, string> = {
-          gpay: 'Google Pay',
-          phonepe: 'PhonePe',
-          paytm: 'Paytm',
-          upi: 'Instant UPI',
-        };
-        const appName = appNames[selectedUpiApp] || 'Instant UPI';
-
-        setProcessingStatus(`Connecting to ${appName} Gateway...`);
-        await new Promise((r) => setTimeout(r, 600));
-
-        setProcessingStatus(`Authorizing payment of ₹${finalTotal} with Bank & NPCI...`);
-        await new Promise((r) => setTimeout(r, 600));
-
-        await executeInstantOrderPlacement(rzpOrder.id);
-        setIsProcessing(false);
+        setProcessingStatus('Connecting to Razorpay gateway...');
+        await handleRazorpayCheckout({
+          amount: finalTotal,
+          orderRefId: 'nx_' + Date.now(),
+          applicationId: 'NEXORA_APP',
+          customer: {
+            name: chosenAddr.name || currentUser.name || 'Customer',
+            mobile: chosenAddr.phone || currentUser.phone || '9876543210',
+            email: currentUser.email || 'customer@nexora.in',
+          },
+          brandName: 'NEXORA Quick Commerce',
+          description: '10-Minute Rapid Grocery Delivery',
+          themeColor: '#0c831f',
+          onSuccess: async (receipt) => {
+            setProcessingStatus('✓ Payment Approved! Dispatching to Dark Store...');
+            await createOrderWithBackend({
+              items: cartItems,
+              address: chosenAddr,
+              paymentMethod: 'RAZORPAY',
+              couponCode: couponCode || undefined,
+            });
+            setIsProcessing(false);
+          },
+          onDismiss: () => {
+            setErrorMsg('Payment window closed. Tap below to complete order via 1-Click Instant UPI.');
+            setIsProcessing(false);
+          },
+          onError: (errMsg) => {
+            setErrorMsg(errMsg || 'Payment was interrupted. Tap below to complete order via 1-Click Instant UPI.');
+            setIsProcessing(false);
+          },
+        });
         return;
       }
 

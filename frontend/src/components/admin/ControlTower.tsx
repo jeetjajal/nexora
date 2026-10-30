@@ -131,7 +131,7 @@ export const ControlTower: React.FC = () => {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
         <div className="bg-white p-4 rounded-card border border-brand-border shadow-card">
           <div className="flex items-center justify-between text-brand-muted mb-1">
             <span className="text-[11px] font-bold">Gross Order Value</span>
@@ -168,7 +168,7 @@ export const ControlTower: React.FC = () => {
           <span className="text-[10px] text-brand-muted font-bold block mt-0.5">Picking SLA: 2.1 mins</span>
         </div>
 
-        <div className="bg-white p-4 rounded-card border border-brand-border shadow-card col-span-2 md:col-span-1">
+        <div className="bg-white p-4 rounded-card border border-brand-border shadow-card sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between text-brand-muted mb-1">
             <span className="text-[11px] font-bold">Stock Alerts</span>
             <AlertTriangle size={14} className="text-amber-500" />
