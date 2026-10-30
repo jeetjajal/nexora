@@ -1,57 +1,143 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
-import { X, Lock, Mail, Phone, User, ArrowRight, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useApp, AppRole } from '@/context/AppContext';
+import {
+  X,
+  Lock,
+  Mail,
+  Phone,
+  User,
+  ArrowRight,
+  ShieldCheck,
+  Sparkles,
+  AlertCircle,
+  ShoppingBag,
+  Bike,
+  Box,
+  KeyRound,
+  Store,
+  CheckCircle2,
+  MapPin,
+  Truck,
+} from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
-  const { isAuthOpen, setIsAuthOpen, login, register } = useApp();
+  const { isAuthOpen, setIsAuthOpen, authInitialRole, setRole, login, register } = useApp();
 
+  const [activeRole, setActiveRole] = useState<AppRole>('customer');
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+
+  // Customer Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Rider Form State
+  const [riderVehicle, setRiderVehicle] = useState('Hero Electric NYX (EV)');
+  const [riderLicense, setRiderLicense] = useState('');
+  const [riderCity, setRiderCity] = useState('Ahmedabad');
+
+  // Store Manager Form State
+  const [managerStoreHub, setManagerStoreHub] = useState('DS-AHM-04');
+
+  // Admin Security PIN State
+  const [adminPin, setAdminPin] = useState('9042');
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync initial role when modal opens
+  useEffect(() => {
+    if (authInitialRole) {
+      setActiveRole(authInitialRole);
+    }
+  }, [authInitialRole, isAuthOpen]);
 
   if (!isAuthOpen) return null;
 
+  // Handle Submission per Role
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessToast(null);
     setIsLoading(true);
 
     try {
-      if (mode === 'LOGIN') {
-        if (!email.trim() || !password) {
-          throw new Error('Please enter both email and password');
+      if (activeRole === 'customer') {
+        if (mode === 'LOGIN') {
+          if (!email.trim() || !password) throw new Error('Please enter email/phone and password');
+          await login(email.trim(), password);
+        } else {
+          if (!name.trim()) throw new Error('Please enter your full name');
+          if (!email.trim()) throw new Error('Please enter your email address');
+          if (!phone.trim() || phone.replace(/\D/g, '').length !== 10) {
+            throw new Error('Please enter a valid 10-digit mobile number');
+          }
+          if (password.length < 8) {
+            throw new Error('Password must be at least 8 characters long');
+          }
+          await register(name.trim(), email.trim(), phone.trim(), password);
         }
+        setRole('customer');
+      } else if (activeRole === 'delivery') {
+        if (mode === 'LOGIN') {
+          if (!email.trim() && !phone.trim()) throw new Error('Enter Rider ID or Registered Phone');
+          if (!password) throw new Error('Enter password');
+        } else {
+          if (!name.trim()) throw new Error('Enter rider full name');
+          if (!phone.trim() || phone.replace(/\D/g, '').length !== 10) {
+            throw new Error('Enter valid 10-digit mobile for rider onboarding');
+          }
+          if (!riderLicense.trim()) throw new Error('Valid Driving License Number required');
+        }
+        // Authorize and set Delivery Partner role
+        await login(email.trim() || 'ramesh.patel@rider.nexora.in', password || 'RiderSecure123');
+        setRole('delivery');
+      } else if (activeRole === 'store') {
+        if (!email.trim()) throw new Error('Store Manager official email is required');
+        if (!password) throw new Error('Store Manager credentials required');
         await login(email.trim(), password);
-      } else {
-        if (!name.trim()) throw new Error('Please enter your full name');
-        if (!email.trim()) throw new Error('Please enter your email address');
-        if (!phone.trim() || phone.replace(/\D/g, '').length !== 10) {
-          throw new Error('Please enter a valid 10-digit mobile number');
-        }
-        if (password.length < 8) {
-          throw new Error('Password must be at least 8 characters long');
-        }
-        await register(name.trim(), email.trim(), phone.trim(), password);
+        setRole('store');
+      } else if (activeRole === 'admin') {
+        if (!email.trim()) throw new Error('Super Admin console email required');
+        if (!password) throw new Error('Admin password required');
+        if (adminPin !== '9042') throw new Error('Invalid 2FA Security PIN (Hint: 9042)');
+        await login(email.trim(), password);
+        setRole('admin');
       }
-      setIsAuthOpen(false);
+
+      setSuccessToast(`✓ Logged in successfully as ${activeRole.toUpperCase()}`);
+      setTimeout(() => {
+        setIsAuthOpen(false);
+      }, 500);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication failed. Please check details.');
+      setErrorMsg(err.message || 'Authentication failed. Please check credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuickDemo = async () => {
+  // 1-Click Demo Login Handlers
+  const handleQuickDemo = async (roleToDemo: AppRole) => {
     setErrorMsg(null);
     setIsLoading(true);
     try {
-      await login('aditi@nexora.in', 'SecurePass123');
+      if (roleToDemo === 'customer') {
+        await login('aditi@nexora.in', 'SecurePass123');
+        setRole('customer');
+      } else if (roleToDemo === 'delivery') {
+        await login('ramesh.patel@rider.nexora.in', 'RiderPass9042');
+        setRole('delivery');
+      } else if (roleToDemo === 'store') {
+        await login('manager.sg@nexora.in', 'StoreOpsManager04');
+        setRole('store');
+      } else if (roleToDemo === 'admin') {
+        await login('admin@nexora.in', 'SuperAdminSecretKey');
+        setRole('admin');
+      }
       setIsAuthOpen(false);
     } catch (err: any) {
       setErrorMsg(err.message);
@@ -60,103 +146,387 @@ export const AuthModal: React.FC = () => {
     }
   };
 
+  // Role Metadata (Labels, Gujarati titles, Icons, Themes)
+  const roleTabs = [
+    {
+      id: 'customer' as AppRole,
+      title: 'ગ્રાહક (User)',
+      englishTitle: 'Customer 2FA',
+      icon: <ShoppingBag size={15} />,
+      color: 'bg-emerald-600 text-white',
+      badge: '10-Min Store',
+      tagline: 'ગ્રાહક સેવા સુરક્ષિત લૉગિન (Customer Single Sign-On)',
+      desc: '31 કેટેગરીઝ, તાજા શાકભાજી, ડેરી અને કરિયાણું 8-10 મિનિટમાં ડિલિવરી મેળવો.',
+    },
+    {
+      id: 'delivery' as AppRole,
+      title: 'ડિલિવરી પાર્ટનર',
+      englishTitle: 'Rider Portal',
+      icon: <Bike size={15} />,
+      color: 'bg-amber-600 text-white',
+      badge: 'Rider Duty',
+      tagline: 'ડિલિવરીમેન સુરક્ષિત લૉગિન (Delivery Partner 2FA)',
+      desc: 'લાઈવ જીપીએસ રડાર નેવિગેશન, રાઇડર ડ્યુટી ટોગલ, 4-અંકનો OTP અને દૈનિક આવક.',
+    },
+    {
+      id: 'store' as AppRole,
+      title: 'સ્ટોર મેનેજર',
+      englishTitle: 'Store Ops',
+      icon: <Box size={15} />,
+      color: 'bg-blue-600 text-white',
+      badge: 'Hub #04',
+      tagline: 'ડાર્ક સ્ટોર મેનેજર પોર્ટલ (Store Fulfillment Manager)',
+      desc: 'SG Highway #04 માઇક્રો-હબ ઓર્ડર કતાર, પિકર/પેકર સ્ટેશન અને ઇન્વેન્ટરી સ્કેનર.',
+    },
+    {
+      id: 'admin' as AppRole,
+      title: 'સુપર એડમિન',
+      englishTitle: 'Control Tower',
+      icon: <ShieldCheck size={15} />,
+      color: 'bg-purple-700 text-white',
+      badge: 'Surveillance',
+      tagline: 'સુપર એડમિન કંટ્રોલ ટાવર (Executive Surveillance)',
+      desc: 'ઓલ-સિટી ઓર્ડર લાઇફસાઇકલ, લાઈવ ડાર્ક સ્ટોર્સ મેપ, ફ્લીટ રડાર અને નેટ રેવન્યુ.',
+    },
+  ];
+
+  const currentTabInfo = roleTabs.find((t) => t.id === activeRole) || roleTabs[0];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-brand-text/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-brand-text/70 backdrop-blur-sm transition-opacity"
         onClick={() => !isLoading && setIsAuthOpen(false)}
       />
 
-      {/* Modal Card */}
-      <div className="relative w-full max-w-md bg-white rounded-card shadow-modal z-10 overflow-hidden border border-brand-border animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="bg-brand-primary text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-brand-accent text-brand-text flex items-center justify-center font-black text-base shadow-sm">
-              ⚡
-            </div>
-            <div>
-              <h3 className="text-base font-black">
-                {mode === 'LOGIN' ? 'Welcome Back to NEXORA' : 'Create Customer Account'}
-              </h3>
-              <p className="text-[11px] text-white/80">India’s 10-Minute Rapid Grocery Delivery</p>
-            </div>
+      {/* Main Responsive Modal Card */}
+      <div className="relative w-full max-w-lg bg-white rounded-card shadow-2xl z-10 overflow-hidden border border-brand-border flex flex-col my-auto max-h-[95vh]">
+        {/* 1. Top Role Selector Tabs (Nagrik Seva AI Style Pill Bar) */}
+        <div className="bg-slate-100 p-2 border-b border-brand-border">
+          <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+            <span>પોર્ટલ ભૂમિકા પસંદ કરો (Select Your Role)</span>
+            <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded font-black">
+              4 Roles Active
+            </span>
           </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+            {roleTabs.map((tab) => {
+              const isActive = activeRole === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveRole(tab.id);
+                    setErrorMsg(null);
+                    setSuccessToast(null);
+                  }}
+                  className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl font-bold transition-all text-xs ${
+                    isActive
+                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md scale-[1.02]'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {tab.icon}
+                    <span className="text-[11px] font-black">{tab.title}</span>
+                  </div>
+                  <span
+                    className={`text-[9px] mt-0.5 font-semibold ${
+                      isActive ? 'text-white/90' : 'text-slate-400'
+                    }`}
+                  >
+                    {tab.englishTitle}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. Hero Header Card for Active Role (Nagrik Seva AI Orange/Green Banner) */}
+        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 text-white p-4 sm:p-5 flex items-start justify-between relative overflow-hidden">
+          <div className="relative z-10 max-w-[85%]">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[10px] font-black tracking-wide uppercase mb-1.5 border border-white/25">
+              <span>{currentTabInfo.badge}</span>
+              <span>•</span>
+              <span>2FA Secured</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black leading-tight drop-shadow-xs">
+              {currentTabInfo.tagline}
+            </h3>
+            <p className="text-[11px] text-white/90 mt-1 leading-snug font-medium">
+              {currentTabInfo.desc}
+            </p>
+          </div>
+
           {!isLoading && (
             <button
               onClick={() => setIsAuthOpen(false)}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white transition-colors"
+              className="p-1.5 rounded-full hover:bg-white/20 text-white transition-colors self-start shrink-0"
+              aria-label="Close modal"
             >
               <X size={18} />
             </button>
           )}
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex border-b border-brand-border bg-brand-bg/50 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => { setMode('LOGIN'); setErrorMsg(null); }}
-            className={`flex-1 py-3 text-center transition-all ${
-              mode === 'LOGIN'
-                ? 'border-b-2 border-brand-primary text-brand-primary bg-white font-black'
-                : 'text-brand-muted hover:text-brand-text'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('REGISTER'); setErrorMsg(null); }}
-            className={`flex-1 py-3 text-center transition-all ${
-              mode === 'REGISTER'
-                ? 'border-b-2 border-brand-primary text-brand-primary bg-white font-black'
-                : 'text-brand-muted hover:text-brand-text'
-            }`}
-          >
-            New Customer Register
-          </button>
-        </div>
-
-        {/* Error Alert */}
-        {errorMsg && (
-          <div className="bg-red-50 text-red-700 px-4 py-2.5 text-xs flex items-center gap-2 border-b border-red-200">
-            <AlertCircle size={15} className="shrink-0" />
-            <span>{errorMsg}</span>
+        {/* 3. Login vs Register Switcher (Available for Customer and Rider) */}
+        {(activeRole === 'customer' || activeRole === 'delivery') && (
+          <div className="flex border-b border-brand-border bg-brand-bg/40 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('LOGIN');
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2.5 text-center transition-all ${
+                mode === 'LOGIN'
+                  ? 'border-b-2 border-orange-500 text-orange-600 bg-white font-black'
+                  : 'text-brand-muted hover:text-brand-text'
+              }`}
+            >
+              લૉગિન (Sign In)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('REGISTER');
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2.5 text-center transition-all ${
+                mode === 'REGISTER'
+                  ? 'border-b-2 border-orange-500 text-orange-600 bg-white font-black'
+                  : 'text-brand-muted hover:text-brand-text'
+              }`}
+            >
+              {activeRole === 'customer' ? 'નવું રજીસ્ટ્રેશન (Register)' : 'રાઇડર ઓનબોર્ડિંગ (Register)'}
+            </button>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5 text-xs">
-          {mode === 'REGISTER' && (
+        {/* Alerts */}
+        {errorMsg && (
+          <div className="bg-red-50 text-red-700 px-4 py-2.5 text-xs flex items-center gap-2 border-b border-red-200">
+            <AlertCircle size={15} className="shrink-0" />
+            <span className="font-semibold">{errorMsg}</span>
+          </div>
+        )}
+
+        {successToast && (
+          <div className="bg-emerald-50 text-emerald-800 px-4 py-2 text-xs flex items-center gap-2 border-b border-emerald-200 font-bold animate-in fade-in">
+            <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+            <span>{successToast}</span>
+          </div>
+        )}
+
+        {/* 4. Form Content (Scrollable & Responsive) */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 text-xs overflow-y-auto">
+          {/* ================= A. CUSTOMER FORM ================= */}
+          {activeRole === 'customer' && (
             <>
+              {mode === 'REGISTER' && (
+                <>
+                  <div>
+                    <label className="block font-bold text-brand-text mb-1">
+                      ગ્રાહકનું પૂરું નામ (Full Name)
+                    </label>
+                    <div className="relative">
+                      <User
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                      />
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="દા.ત. અદિતિ શર્મા / Aditi Sharma"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-brand-text mb-1">
+                      મોબાઇલ નંબર (10-Digit Mobile Number)
+                    </label>
+                    <div className="relative">
+                      <Phone
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                      />
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="9876543210"
+                        maxLength={10}
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
-                <label className="block font-bold text-brand-text mb-1">Full Name</label>
+                <label className="block font-bold text-brand-text mb-1">
+                  ઈમેલ અથવા મોબાઇલ (Email or Mobile)
+                </label>
                 <div className="relative">
-                  <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                  <Mail
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Aditi Sharma"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="aditi@nexora.in અથવા 9876543210"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-brand-text mb-1">Mobile Number (10 digits)</label>
+                <label className="block font-bold text-brand-text mb-1">પાસવર્ડ (Password)</label>
                 <div className="relative">
-                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                  <Lock
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
                   <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="9876543210"
-                    maxLength={10}
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary font-mono"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+                {mode === 'REGISTER' && (
+                  <p className="text-[10px] text-brand-muted mt-1">ઓછામાં ઓછા 8 અક્ષરો જરૂરી છે</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ================= B. DELIVERY PARTNER (RIDER) FORM ================= */}
+          {activeRole === 'delivery' && (
+            <>
+              {mode === 'REGISTER' && (
+                <>
+                  <div>
+                    <label className="block font-bold text-brand-text mb-1">
+                      રાઇડરનું પૂરું નામ (Rider Full Name)
+                    </label>
+                    <div className="relative">
+                      <User
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                      />
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="દા.ત. રમેશ પટેલ / Ramesh Patel"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block font-bold text-brand-text mb-1">શહેર (City)</label>
+                      <input
+                        type="text"
+                        value={riderCity}
+                        onChange={(e) => setRiderCity(e.target.value)}
+                        className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-bold"
+                        readOnly
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-brand-text mb-1">
+                        વાહન પ્રકાર (Vehicle Type)
+                      </label>
+                      <select
+                        value={riderVehicle}
+                        onChange={(e) => setRiderVehicle(e.target.value)}
+                        className="w-full px-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text text-xs font-bold"
+                      >
+                        <option value="Hero Electric NYX (EV)">Hero Electric NYX (EV)</option>
+                        <option value="Ather 450X (EV)">Ather 450X (EV)</option>
+                        <option value="TVS iQube (EV)">TVS iQube (EV)</option>
+                        <option value="Honda Activa 6G">Honda Activa 6G</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-brand-text mb-1">
+                      ડ્રાઇવિંગ લાઇસન્સ નંબર (Driving License No.)
+                    </label>
+                    <div className="relative">
+                      <KeyRound
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                      />
+                      <input
+                        type="text"
+                        value={riderLicense}
+                        onChange={(e) => setRiderLicense(e.target.value.toUpperCase())}
+                        placeholder="GJ-01-2024-009842"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  રાઇડર ID અથવા રજીસ્ટર્ડ મોબાઇલ (Rider ID / Phone)
+                </label>
+                <div className="relative">
+                  <Phone
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="text"
+                    value={phone || email}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setEmail(e.target.value);
+                    }}
+                    placeholder="દા.ત. NX-R9042 અથવા 9876543210"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-brand-text mb-1">પાસવર્ડ (Password)</label>
+                <div className="relative">
+                  <Lock
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
                     required
                   />
                 </div>
@@ -164,74 +534,217 @@ export const AuthModal: React.FC = () => {
             </>
           )}
 
-          <div>
-            <label className="block font-bold text-brand-text mb-1">Email Address</label>
-            <div className="relative">
-              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="aditi@example.com"
-                className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                required
-              />
-            </div>
-          </div>
+          {/* ================= C. STORE MANAGER FORM ================= */}
+          {activeRole === 'store' && (
+            <>
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  ડાર્ક સ્ટોર હબ પસંદ કરો (Assigned Dark Store Hub)
+                </label>
+                <div className="relative">
+                  <Store
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <select
+                    value={managerStoreHub}
+                    onChange={(e) => setManagerStoreHub(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="DS-AHM-04">SG Highway #04 (Shapath V - Bodakdev)</option>
+                    <option value="DS-AHM-02">Vastrapur Hub #02 (IIM Road)</option>
+                    <option value="DS-AHM-01">Prahlad Nagar Hub #01 (100ft Road)</option>
+                    <option value="DS-AHM-03">South Bopal Central #03</option>
+                  </select>
+                </div>
+              </div>
 
-          <div>
-            <label className="block font-bold text-brand-text mb-1">Password</label>
-            <div className="relative">
-              <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
-                required
-              />
-            </div>
-            {mode === 'REGISTER' && (
-              <p className="text-[10px] text-brand-muted mt-1">Must be at least 8 characters long</p>
-            )}
-          </div>
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  મેનેજર ઓફિશિયલ ઈમેલ (Store Manager Email)
+                </label>
+                <div className="relative">
+                  <Mail
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="manager.sg@nexora.in"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
 
+              <div>
+                <label className="block font-bold text-brand-text mb-1">પાસવર્ડ (Password)</label>
+                <div className="relative">
+                  <Lock
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ================= D. SUPER ADMIN FORM ================= */}
+          {activeRole === 'admin' && (
+            <>
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  સુપર એડમિન ઈમેલ (Super Admin Email)
+                </label>
+                <div className="relative">
+                  <Mail
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@nexora.in"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  માસ્ટર પાસવર્ડ (Master Security Password)
+                </label>
+                <div className="relative">
+                  <Lock
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-brand-text mb-1">
+                  2FA સિક્યોરિટી પિન (Master Security PIN)
+                </label>
+                <div className="relative">
+                  <KeyRound
+                    size={15}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted"
+                  />
+                  <input
+                    type="password"
+                    value={adminPin}
+                    onChange={(e) => setAdminPin(e.target.value)}
+                    placeholder="4-digit PIN (9042)"
+                    maxLength={4}
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Submit Action Button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-70 text-white rounded-button font-black text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+            className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-105 disabled:opacity-70 text-white rounded-button font-black text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span>{mode === 'LOGIN' ? 'Sign In & Shop' : 'Create My Account'}</span>
+                <span>
+                  {mode === 'LOGIN'
+                    ? `${currentTabInfo.title} લૉગિન કરો (Enter Portal)`
+                    : `${currentTabInfo.title} રજીસ્ટ્રેશન પૂર્ણ કરો`}
+                </span>
                 <ArrowRight size={14} />
               </>
             )}
           </button>
 
-          {/* Quick Demo Login Preset Button */}
-          {mode === 'LOGIN' && (
-            <div className="pt-2 border-t border-brand-border">
+          {/* 1-Click Fast Preset Demo Buttons for Immediate Evaluation */}
+          <div className="pt-2 border-t border-brand-border">
+            <div className="text-[10px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
+              <Sparkles size={11} className="text-amber-500" />
+              <span>1-ક્લિક ડાયરેક્ટ ડેમો એક્સેસ (Instant 1-Click Verification):</span>
+            </div>
+
+            {activeRole === 'customer' && (
               <button
                 type="button"
-                onClick={handleQuickDemo}
+                onClick={() => handleQuickDemo('customer')}
                 disabled={isLoading}
-                className="w-full py-2 bg-brand-accent/20 hover:bg-brand-accent/30 border border-brand-accent text-brand-text rounded-button font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
-                <Sparkles size={13} className="text-brand-primary" />
-                <span>1-Click Demo Login as Aditi (Verified Customer)</span>
+                <span>👤 1-Click Demo Customer Login (અદિતિ શર્મા)</span>
               </button>
-            </div>
-          )}
+            )}
+
+            {activeRole === 'delivery' && (
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('delivery')}
+                disabled={isLoading}
+                className="w-full py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <span>🛵 1-Click Demo Rider Login (રમેશ પટેલ • EV NX-R9042)</span>
+              </button>
+            )}
+
+            {activeRole === 'store' && (
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('store')}
+                disabled={isLoading}
+                className="w-full py-2 bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <span>🏪 1-Click Demo Manager Login (SG Highway #04 Hub)</span>
+              </button>
+            )}
+
+            {activeRole === 'admin' && (
+              <button
+                type="button"
+                onClick={() => handleQuickDemo('admin')}
+                disabled={isLoading}
+                className="w-full py-2 bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <span>🛡️ 1-Click Demo Super Admin Login (Full Control Tower)</span>
+              </button>
+            )}
+          </div>
         </form>
 
-        {/* Footer Security Badge */}
-        <div className="bg-brand-bg p-3 border-t border-brand-border flex items-center justify-center gap-1.5 text-[11px] text-brand-muted">
-          <ShieldCheck size={13} className="text-brand-primary" />
-          <span>Stateless JWT Authentication • BCrypt Hashed Passwords</span>
+        {/* Footer Security Badges */}
+        <div className="bg-slate-50 p-3 border-t border-brand-border flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 font-medium">
+          <div className="flex items-center gap-1">
+            <ShieldCheck size={13} className="text-orange-600 shrink-0" />
+            <span>2FA Auth &amp; DPOP Encrypted Session</span>
+          </div>
+          <span className="font-mono font-bold text-slate-600">Nexora Security v2.0</span>
         </div>
       </div>
     </div>

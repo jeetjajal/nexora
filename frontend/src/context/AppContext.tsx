@@ -41,6 +41,8 @@ interface AppContextType {
   pastOrders: PastOrder[];
   isAuthOpen: boolean;
   setIsAuthOpen: (open: boolean) => void;
+  authInitialRole: AppRole;
+  openAuthModal: (role?: AppRole) => void;
   isAccountOpen: boolean;
   setIsAccountOpen: (open: boolean) => void;
   login: (email: string, password: string) => Promise<void>;
@@ -111,6 +113,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [pastOrders, setPastOrders] = useState<PastOrder[]>([]);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialRole, setAuthInitialRole] = useState<AppRole>('customer');
+
+  const openAuthModal = (roleToOpen: AppRole = 'customer') => {
+    setAuthInitialRole(roleToOpen);
+    setIsAuthOpen(true);
+  };
   const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   const [cart, setCart] = useState<{ [productId: string]: number }>({});
@@ -423,6 +431,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         pastOrders,
         isAuthOpen,
         setIsAuthOpen,
+        authInitialRole,
+        openAuthModal,
         isAccountOpen,
         setIsAccountOpen,
         login,

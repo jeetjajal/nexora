@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
+  Lock,
 } from 'lucide-react';
 
 interface PortalOption {
@@ -23,10 +24,11 @@ interface PortalOption {
   features: string[];
   icon: React.ReactNode;
   iconBg: string;
+  loginButtonText: string;
 }
 
 export const RolePortalModal: React.FC = () => {
-  const { isRolePortalOpen, setIsRolePortalOpen, role, setRole } = useApp();
+  const { isRolePortalOpen, setIsRolePortalOpen, role, setRole, currentUser, openAuthModal } = useApp();
 
   if (!isRolePortalOpen) return null;
 
@@ -41,6 +43,7 @@ export const RolePortalModal: React.FC = () => {
       features: ['31 Categories & Subcategories', 'Blinkit Dual-Column View', 'Order Again & Saved Addresses', 'Online Razorpay / COD'],
       icon: <ShoppingBag size={24} className="text-emerald-700" />,
       iconBg: 'bg-emerald-50 border-emerald-200',
+      loginButtonText: 'ગ્રાહક લૉગિન / Continue',
     },
     {
       id: 'delivery',
@@ -52,6 +55,7 @@ export const RolePortalModal: React.FC = () => {
       features: ['Rider Onboarding / Registration', 'Live GPS Radar Route to Customer', 'Doorstep 4-Digit OTP Handshake', 'Earnings (Today / Week / Month / Year)'],
       icon: <Bike size={24} className="text-amber-700" />,
       iconBg: 'bg-amber-50 border-amber-200',
+      loginButtonText: 'રાઇડર લૉગિન / Register',
     },
     {
       id: 'store',
@@ -63,6 +67,7 @@ export const RolePortalModal: React.FC = () => {
       features: ['Manager Hub Scoped to Store #04', 'Picker Station & Item Bin Locations', 'Packing Verification & Barcodes', 'Sales Volume (Daily / Weekly / Monthly / Yearly)'],
       icon: <Box size={24} className="text-blue-700" />,
       iconBg: 'bg-blue-50 border-blue-200',
+      loginButtonText: 'સ્ટોર મેનેજર લૉગિન',
     },
     {
       id: 'admin',
@@ -74,15 +79,13 @@ export const RolePortalModal: React.FC = () => {
       features: ['Live Dark Stores Map & Fleet Radar', 'All-City Order Lifecycle Surveillance', 'Company Financials & Net Revenue', 'Surge Pricing & Catalog Controls'],
       icon: <ShieldCheck size={24} className="text-purple-700" />,
       iconBg: 'bg-purple-50 border-purple-200',
+      loginButtonText: 'સુપર એડમિન લૉગિન',
     },
   ];
 
   const handleSelect = (selectedRole: AppRole) => {
-    setRole(selectedRole);
     setIsRolePortalOpen(false);
-    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-      window.location.href = '/';
-    }
+    openAuthModal(selectedRole);
   };
 
   return (
@@ -96,17 +99,17 @@ export const RolePortalModal: React.FC = () => {
       {/* Modal Container */}
       <div className="relative w-full max-w-3xl bg-white rounded-card shadow-2xl z-10 overflow-hidden border border-brand-border flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-[#0c831f] to-[#0a6618] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-emerald-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-brand-accent text-brand-text flex items-center justify-center font-black text-base shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-white text-orange-600 flex items-center justify-center font-black text-base shadow-sm">
               ⚡
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black tracking-tight">
-                NEXORA Portal Access · પોર્ટલ પસંદ કરો
+                NEXORA 2FA Portal Access · પોર્ટલ પસંદ કરો
               </h3>
-              <p className="text-[11px] sm:text-xs text-white/80">
-                Select your role to access your dedicated workspace (આપનો રોલ પસંદ કરો)
+              <p className="text-[11px] sm:text-xs text-white/90">
+                પોતાના રોલ મુજબ લૉગિન કરો — લૉગિન થતાં જ સીધો તે જ સેક્શન દેખાશે
               </p>
             </div>
           </div>
@@ -129,15 +132,15 @@ export const RolePortalModal: React.FC = () => {
                 onClick={() => handleSelect(p.id)}
                 className={`relative p-4 sm:p-5 rounded-card border bg-white cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between ${
                   isCurrent
-                    ? 'border-brand-primary ring-2 ring-brand-primary/20 shadow-sm'
-                    : 'border-brand-border hover:border-brand-primary/50'
+                    ? 'border-orange-500 ring-2 ring-orange-400/30 shadow-sm'
+                    : 'border-brand-border hover:border-orange-400/60'
                 }`}
               >
                 {/* Active Indicator */}
                 {isCurrent && (
-                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-brand-primary text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
                     <CheckCircle2 size={11} />
-                    <span>Active Now</span>
+                    <span>Active Workspace</span>
                   </div>
                 )}
 
@@ -156,7 +159,7 @@ export const RolePortalModal: React.FC = () => {
                           {p.badge}
                         </span>
                       </div>
-                      <p className="text-xs font-bold text-brand-primary mt-0.5">
+                      <p className="text-xs font-bold text-orange-600 mt-0.5">
                         {p.gujaratiTitle}
                       </p>
                     </div>
@@ -171,7 +174,7 @@ export const RolePortalModal: React.FC = () => {
                   <ul className="space-y-1 mb-4 text-[11px] text-brand-text/90">
                     {p.features.map((feat, idx) => (
                       <li key={idx} className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -181,13 +184,14 @@ export const RolePortalModal: React.FC = () => {
                 {/* Enter Button */}
                 <button
                   type="button"
-                  className={`w-full py-2 px-3 rounded-button font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  className={`w-full py-2.5 px-3 rounded-button font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs ${
                     isCurrent
-                      ? 'bg-brand-primary text-white hover:bg-brand-primaryHover'
-                      : 'bg-brand-bg hover:bg-brand-primary hover:text-white text-brand-text border border-brand-border'
+                      ? 'bg-orange-500 text-white hover:brightness-105'
+                      : 'bg-brand-bg hover:bg-orange-500 hover:text-white text-brand-text border border-brand-border'
                   }`}
                 >
-                  <span>{isCurrent ? 'Continue Here' : `Open ${p.title}`}</span>
+                  <Lock size={12} />
+                  <span>{isCurrent ? 'Continue Workspace →' : p.loginButtonText}</span>
                   <ArrowRight size={13} />
                 </button>
               </div>
@@ -197,9 +201,11 @@ export const RolePortalModal: React.FC = () => {
 
         {/* Modal Footer Note */}
         <div className="p-3 bg-white border-t border-brand-border text-center text-[11px] text-brand-muted shrink-0">
-          Tip: Customers shop directly on the storefront. Staff & partners can switch roles anytime from their profile or portal shortcut.
+          ગ્રાહક સીધા સ્ટોરફ્રન્ટ પર શોપિંગ કરી શકે છે. સ્ટાફ અને પાર્ટનર્સ આ પોર્ટલ અથવા લૉગિન પેજ પરથી સીધા પોતાના ડેડિકેટેડ સેક્શનમાં પ્રવેશી શકે છે.
         </div>
       </div>
     </div>
   );
 };
+
+export default RolePortalModal;
