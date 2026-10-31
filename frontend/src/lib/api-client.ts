@@ -1004,6 +1004,68 @@ export class ApiClient {
     const json = await res.json();
     return json.data;
   }
+
+  // Feature 5: Rider Shift Selfie & Biometric KYC
+  static async getShiftVerificationStatus(token?: string): Promise<RiderShiftVerificationStatus> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/delivery/verification/status', { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch shift verification status');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async submitShiftSelfie(
+    payload: { imageBase64: string; latitude?: number; longitude?: number },
+    token?: string
+  ): Promise<RiderShiftVerificationStatus> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/delivery/verification/selfie', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Selfie verification rejected');
+    }
+    return json.data;
+  }
+
+  static async supervisorOverrideShiftVerification(
+    payload: { deliveryPartnerId: number; reason: string },
+    token?: string
+  ): Promise<RiderShiftVerificationStatus> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/delivery/verification/override', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.message || 'Supervisor override failed');
+    }
+    return json.data;
+  }
+}
+
+export interface RiderShiftVerificationStatus {
+  id: number | null;
+  deliveryPartnerId: number;
+  riderName: string;
+  shiftDate: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUPERVISOR_OVERRIDE';
+  livenessScore?: number | null;
+  matchScore?: number | null;
+  verifiedAt?: string | null;
+  isShiftActive: boolean;
+  rejectionReason?: string | null;
 }
 
 export interface StoreQueueOrder {

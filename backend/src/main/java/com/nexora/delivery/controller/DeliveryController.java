@@ -1,4 +1,10 @@
+
 package com.nexora.delivery.controller;
+
+import com.nexora.delivery.dto.RiderManualOverrideRequest;
+import com.nexora.delivery.dto.RiderSelfieVerificationRequest;
+import com.nexora.delivery.dto.RiderVerificationResponse;
+import com.nexora.delivery.service.RiderVerificationService;
 
 import com.nexora.auth.security.UserPrincipal;
 import com.nexora.common.ApiResponse;
@@ -23,6 +29,7 @@ import java.util.List;
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+    private final RiderVerificationService verificationService;
 
     @GetMapping("/profile")
     @PreAuthorize("hasAnyRole('DELIVERY_PARTNER','ADMIN','SUPER_ADMIN')")
@@ -91,5 +98,35 @@ public class DeliveryController {
             
         DeliveryAssignmentResponse response = deliveryService.updateAssignmentStatus(currentUser.getId(), id, status);
         return ResponseEntity.ok(ApiResponse.success("Assignment status updated successfully", response));
+    }
+
+    // Feature 5: Shift-Start Selfie & Biometric KYC Verification
+    @GetMapping("/verification/status")
+    @PreAuthorize("hasAnyRole('DELIVERY_PARTNER','ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RiderVerificationResponse>> getVerificationStatus(
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        RiderVerificationResponse response = verificationService.getTodayVerificationStatus(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success("Rider shift verification status retrieved", response));
+    }
+
+    @PostMapping("/verification/selfie")
+    @PreAuthorize("hasAnyRole('DELIVERY_PARTNER','ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RiderVerificationResponse>> submitSelfieVerification(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestBody RiderSelfieVerificationRequest request) {
+
+        RiderVerificationResponse response = verificationService.verifyShiftSelfie(currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Shift verification processed", response));
+    }
+
+    @PostMapping("/verification/override")
+    @PreAuthorize("hasAnyRole('STORE_MANAGER','ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<RiderVerificationResponse>> manualSupervisorOverride(
+            @AuthenticationPrincipal UserPrincipal currentUser,
+            @RequestBody RiderManualOverrideRequest request) {
+
+        RiderVerificationResponse response = verificationService.manualSupervisorOverride(currentUser.getId(), request);
+        return ResponseEntity.ok(ApiResponse.success("Supervisor override approved", response));
     }
 }

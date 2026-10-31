@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { ApiClient } from '@/lib/api-client';
+import { ApiClient, RiderShiftVerificationStatus } from '@/lib/api-client';
 import {
   Power,
   MapPin,
@@ -24,6 +24,11 @@ import {
   Star,
   Wifi,
   Radio,
+  Camera,
+  ShieldAlert,
+  Lock,
+  Unlock,
+  RefreshCw,
 } from 'lucide-react';
 
 export const DeliveryApp: React.FC = () => {
@@ -53,6 +58,143 @@ export const DeliveryApp: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [bagChecked, setBagChecked] = useState(true);
   const [demoOrderActive, setDemoOrderActive] = useState(false);
+
+  // Feature 5: Shift-Start Selfie & Biometric KYC State
+  const [kycStatus, setKycStatus] = useState<RiderShiftVerificationStatus | null>(null);
+  const [showKycModal, setShowKycModal] = useState(false);
+  const [isVerifyingSelfie, setIsVerifyingSelfie] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [kycError, setKycError] = useState<string | null>(null);
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [isSubmittingOverride, setIsSubmittingOverride] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Load Shift KYC Status on Mount
+  useEffect(() => {
+    let mounted = true;
+    ApiClient.getShiftVerificationStatus()
+      .then((res) => {
+        if (mounted && res) {
+          setKycStatus(res);
+          if (res.status !== 'APPROVED') {
+            setIsOnDuty(false);
+          }
+        }
+      })
+      .catch(() => {
+        // Fallback default
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const startCamera = async () => {
+    try {
+      setKycError(null);
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setKycError('Camera access not supported in this browser. Please use the simulated selfie button.');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+        setCameraActive(true);
+      }
+    } catch {
+      setKycError('Camera access denied or unavailable. Use the instant photo snapshot test.');
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth || 320;
+      canvas.height = videoRef.current.videoHeight || 320;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setCapturedImage(dataUrl);
+        stopCamera();
+      }
+    }
+  };
+
+  const handleSelfieSubmit = async (imageOverride?: string) => {
+    const img = imageOverride || capturedImage || 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD_nexora_standard_rider_selfie';
+    setIsVerifyingSelfie(true);
+    setKycError(null);
+    try {
+      const res = await ApiClient.submitShiftSelfie({
+        imageBase64: img,
+        latitude: lastCoords?.lat || 23.0373,
+        longitude: lastCoords?.lng || 72.5118,
+      });
+      setKycStatus(res);
+      if (res.status === 'APPROVED') {
+        setIsOnDuty(true);
+        setShowKycModal(false);
+        setCapturedImage(null);
+      } else {
+        setKycError(res.rejectionReason || 'Anti-spoofing alert: Verification failed.');
+      }
+    } catch (err: any) {
+      setKycError(err.message || 'Verification failed. Please retry.');
+    } finally {
+      setIsVerifyingSelfie(false);
+    }
+  };
+
+  const handleSupervisorOverride = async () => {
+    if (!overrideReason.trim()) {
+      setKycError('Supervisor reason is required for manual shift override.');
+      return;
+    }
+    setIsSubmittingOverride(true);
+    try {
+      const res = await ApiClient.supervisorOverrideShiftVerification({
+        deliveryPartnerId: 9042,
+        reason: overrideReason.trim(),
+      });
+      setKycStatus(res);
+      setIsOnDuty(true);
+      setShowOverrideDialog(false);
+      setShowKycModal(false);
+      setOverrideReason('');
+    } catch (err: any) {
+      setKycError(err.message || 'Supervisor override request failed.');
+    } finally {
+      setIsSubmittingOverride(false);
+    }
+  };
+
+  const handleDutyToggle = () => {
+    if (!isOnDuty) {
+      if (kycStatus?.status !== 'APPROVED') {
+        setShowKycModal(true);
+        return;
+      }
+      setIsOnDuty(true);
+    } else {
+      setIsOnDuty(false);
+    }
+  };
 
   const earningsData = {
     TODAY: { earnings: '₹840.00', trips: 14, tips: '₹120', onTime: '99.4%', hours: '5.2 hrs' },
@@ -301,6 +443,26 @@ export const DeliveryApp: React.FC = () => {
 
         {/* On-Duty Switch & Dedicated App Link */}
         <div className="flex items-center gap-2">
+          {kycStatus?.status === 'APPROVED' ? (
+            <button
+              onClick={() => setShowKycModal(true)}
+              className="text-[11px] bg-emerald-50 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-300 flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+              title="Shift biometric verification passed"
+            >
+              <ShieldCheck size={12} className="text-emerald-600" />
+              <span>KYC Verified ({kycStatus.livenessScore ? Math.round(kycStatus.livenessScore * 100) : 94}%)</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowKycModal(true)}
+              className="text-[11px] bg-rose-50 text-rose-700 font-bold px-2.5 py-1 rounded-full border border-rose-300 flex items-center gap-1 hover:bg-rose-100 transition-colors animate-pulse"
+              title="Shift selfie verification required before going online"
+            >
+              <Lock size={12} className="text-rose-600" />
+              <span>Verify Selfie KYC</span>
+            </button>
+          )}
+
           <button
             onClick={() => setIsRegisteredRider(false)}
             className="text-[11px] text-brand-muted hover:text-brand-text px-2 py-1 border border-brand-border rounded"
@@ -309,7 +471,7 @@ export const DeliveryApp: React.FC = () => {
             Edit Profile
           </button>
           <button
-            onClick={() => setIsOnDuty(!isOnDuty)}
+            onClick={handleDutyToggle}
             className={`px-4 py-2 rounded-full font-black text-xs flex items-center gap-1.5 transition-all shadow-xs ${
               isOnDuty
                 ? 'bg-emerald-600 text-white hover:bg-emerald-700'
@@ -317,7 +479,7 @@ export const DeliveryApp: React.FC = () => {
             }`}
           >
             <Power size={13} />
-            <span>{isOnDuty ? 'Online (Accepting Trips)' : 'Offline'}</span>
+            <span>{isOnDuty ? 'Online (Accepting Trips)' : 'Offline (Shift Locked)'}</span>
           </button>
         </div>
       </div>
@@ -576,6 +738,225 @@ export const DeliveryApp: React.FC = () => {
               <span>Open Dedicated Rider Screen</span>
               <ArrowRight size={12} />
             </Link>
+          </div>
+        </div>
+      )}
+      {/* Feature 5: Shift-Start Selfie & Anti-Spoofing KYC Modal */}
+      {showKycModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl border border-brand-border shadow-2xl max-w-lg w-full overflow-hidden space-y-4">
+            {/* Header */}
+            <div className="bg-[#176B45] text-white p-4 sm:p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-[#D8F36A]">
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black tracking-tight">Shift Biometric KYC Verification</h3>
+                  <p className="text-[11px] text-white/80">Daily anti-spoofing liveness check &bull; Nexora Safety 3.0</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  stopCamera();
+                  setShowKycModal(false);
+                }}
+                className="text-white/70 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 space-y-4">
+              {/* Current Status banner */}
+              <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                kycStatus?.status === 'APPROVED'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  : 'bg-amber-50 border-amber-300 text-amber-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {kycStatus?.status === 'APPROVED' ? (
+                    <CheckCircle2 size={16} className="text-emerald-600" />
+                  ) : (
+                    <AlertCircle size={16} className="text-amber-600" />
+                  )}
+                  <span>Status: {kycStatus?.status || 'PENDING_SHIFT_SELFIE'}</span>
+                </div>
+                <span className="text-[10px] text-brand-muted font-mono">
+                  {kycStatus?.shiftDate || new Date().toISOString().split('T')[0]}
+                </span>
+              </div>
+
+              {/* Camera / Photo Preview Viewport */}
+              <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-700 min-h-[220px] flex items-center justify-center">
+                {cameraActive ? (
+                  <div className="relative w-full h-[240px]">
+                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    {/* Face alignment overlay */}
+                    <div className="absolute inset-0 border-2 border-dashed border-[#D8F36A]/70 rounded-full w-44 h-56 m-auto pointer-events-none flex items-center justify-center">
+                      <span className="text-[10px] text-white/90 bg-black/60 px-2 py-0.5 rounded-full font-bold">
+                        Fit face inside frame
+                      </span>
+                    </div>
+                  </div>
+                ) : capturedImage ? (
+                  <div className="relative w-full h-[240px] flex items-center justify-center bg-black">
+                    <img src={capturedImage} alt="Captured shift selfie" className="w-full h-full object-cover" />
+                    <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                      <CheckCircle2 size={10} /> Photo Ready
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 space-y-2 text-zinc-300">
+                    <Camera size={36} className="mx-auto text-zinc-400" />
+                    <p className="text-xs font-bold">Front camera ready for face liveness check</p>
+                    <p className="text-[11px] text-zinc-400 max-w-xs mx-auto">
+                      Make sure you are in a well-lit area with your delivery uniform/helmet visible.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                {!cameraActive ? (
+                  <button
+                    onClick={startCamera}
+                    className="flex-1 py-2 px-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    <Camera size={14} /> Open Camera
+                  </button>
+                ) : (
+                  <button
+                    onClick={capturePhoto}
+                    className="flex-1 py-2 px-3 bg-[#176B45] hover:bg-[#125335] text-white rounded-lg text-xs font-black flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                  >
+                    <Camera size={14} /> Take Snapshot
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    stopCamera();
+                    handleSelfieSubmit('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD_nexora_standard_rider_selfie');
+                  }}
+                  disabled={isVerifyingSelfie}
+                  className="py-2 px-3 bg-[#D8F36A] hover:bg-[#c9e657] text-[#176B45] rounded-lg text-xs font-black flex items-center justify-center gap-1 transition-colors shadow-xs disabled:opacity-50"
+                  title="Simulate genuine rider shift selfie"
+                >
+                  <Sparkles size={13} /> Quick Test Pass
+                </button>
+
+                <button
+                  onClick={() => {
+                    stopCamera();
+                    handleSelfieSubmit('data:image/jpeg;base64,spoof_test_screen_reflection');
+                  }}
+                  disabled={isVerifyingSelfie}
+                  className="py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                  title="Test spoof rejection (photo of photo/screen reflection)"
+                >
+                  <ShieldAlert size={13} /> Test Spoof Alert
+                </button>
+              </div>
+
+              {/* Liveness Threshold Telemetry */}
+              <div className="grid grid-cols-3 gap-2 bg-brand-bg p-3 rounded-xl border border-brand-border text-center">
+                <div>
+                  <span className="text-[10px] text-brand-muted block">Liveness Score</span>
+                  <span className="text-xs font-black text-brand-primary">
+                    {kycStatus?.livenessScore ? `${Math.round(kycStatus.livenessScore * 100)}%` : 'Target: >= 85%'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-brand-muted block">Biometric Match</span>
+                  <span className="text-xs font-black text-brand-primary">
+                    {kycStatus?.matchScore ? `${Math.round(kycStatus.matchScore * 100)}%` : 'Target: >= 80%'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-brand-muted block">Shift Active</span>
+                  <span className="text-xs font-black text-brand-text">
+                    {kycStatus?.isShiftActive ? 'Active (14h)' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Error / Alert notice */}
+              {kycError && (
+                <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-800 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertCircle size={14} className="text-rose-600 shrink-0" />
+                    <span>Verification Issue</span>
+                  </div>
+                  <p className="text-[11px] text-rose-700">{kycError}</p>
+                </div>
+              )}
+
+              {/* Primary Submit Button */}
+              {capturedImage && (
+                <button
+                  onClick={() => handleSelfieSubmit()}
+                  disabled={isVerifyingSelfie}
+                  className="w-full py-3 bg-[#176B45] hover:bg-[#125335] text-white rounded-button font-black text-xs flex items-center justify-center gap-2 shadow-card transition-all active:scale-98 disabled:opacity-50"
+                >
+                  {isVerifyingSelfie ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" /> Verifying Biometric Liveness...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={16} /> Submit Selfie &amp; Activate Shift
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Store Manager Override Option */}
+              <div className="pt-2 border-t border-brand-border flex items-center justify-between text-[11px]">
+                <span className="text-brand-muted">Camera damaged or biometric issue?</span>
+                <button
+                  onClick={() => setShowOverrideDialog(true)}
+                  className="text-brand-primary hover:underline font-bold"
+                >
+                  Request Store Manager Override
+                </button>
+              </div>
+
+              {/* Supervisor Override Sub-Dialog */}
+              {showOverrideDialog && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-2 animate-in fade-in">
+                  <h4 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                    <UserCheck size={14} /> Store Manager Shift Override
+                  </h4>
+                  <p className="text-[11px] text-amber-800">
+                    A physical identity verification will be logged against Supervisor ID and audited in Control Tower.
+                  </p>
+                  <input
+                    type="text"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Reason (e.g. Broken camera, physically inspected at Hub 04)"
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setShowOverrideDialog(false)}
+                      className="px-3 py-1 text-xs text-amber-800 hover:bg-amber-100 rounded"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSupervisorOverride}
+                      disabled={isSubmittingOverride}
+                      className="px-3 py-1.5 bg-amber-800 text-white rounded text-xs font-bold hover:bg-amber-900 disabled:opacity-50"
+                    >
+                      {isSubmittingOverride ? 'Submitting...' : 'Approve Override'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
