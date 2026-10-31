@@ -950,6 +950,60 @@ export class ApiClient {
     const json = await res.json();
     return json.data || [];
   }
+
+  // Feature 4: Cold Chain IoT Telemetry & FEFO Batch Inventory
+  static async getStoreColdChainBatches(storeId = 4, token?: string): Promise<InventoryBatchResponse[]> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/store/coldchain/batches?storeId=${storeId}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load cold chain batches');
+    }
+    const json = await res.json();
+    return json.data || [];
+  }
+
+  static async toggleBatchQuarantine(batchId: number, quarantined: boolean, token?: string): Promise<InventoryBatchResponse> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/store/coldchain/batches?batchId=${batchId}&quarantined=${quarantined}`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update quarantine status');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async recordColdChainTelemetry(storeId: number, storageUnit: string, temperatureCelsius: number, humidityPercentage = 60.0): Promise<TemperatureTelemetryResponse> {
+    const res = await fetch('/api/store/coldchain/telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId, storageUnit, temperatureCelsius, humidityPercentage }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to record temperature telemetry');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async getColdChainOverview(storeId = 4, token?: string): Promise<ColdChainOverviewResponse> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/store/coldchain/overview?storeId=${storeId}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load cold chain overview');
+    }
+    const json = await res.json();
+    return json.data;
+  }
 }
 
 export interface StoreQueueOrder {
@@ -1253,4 +1307,56 @@ export interface WhatsAppConversationSummary {
   lastMessage: string;
   lastActiveAt: string;
   messageCount: number;
+}
+
+
+export interface InventoryBatchResponse {
+  id: number;
+  productId: number;
+  productName: string;
+  storeId: number;
+  storeName: string;
+  batchNumber: string;
+  mfgDate?: string;
+  expiryDate: string;
+  daysUntilExpiry: number;
+  initialQuantity: number;
+  availableQuantity: number;
+  reservedQuantity: number;
+  temperatureZone: string;
+  isQuarantined: boolean;
+  discountAppliedPercent: number;
+  isExpired: boolean;
+  freshnessStatus: 'FRESH' | 'NEAR_EXPIRY_48H' | 'CRITICAL_24H' | 'EXPIRED';
+}
+
+export interface TemperatureTelemetryResponse {
+  id: number;
+  storeId: number;
+  storageUnit: string;
+  temperatureCelsius: number;
+  humidityPercentage?: number;
+  minSafeTemp: number;
+  maxSafeTemp: number;
+  breachDetected: boolean;
+  status: 'NORMAL' | 'BREACH_ALERT';
+  recordedAt: string;
+}
+
+export interface ColdChainOverviewResponse {
+  storeId: number;
+  storeName: string;
+  totalBatches: number;
+  activeBatches: number;
+  nearExpiryCount: number;
+  quarantinedCount: number;
+  units: {
+    storageUnit: string;
+    currentTemp: number;
+    targetTemp: number;
+    minSafe: number;
+    maxSafe: number;
+    inBreach: boolean;
+    lastUpdated: string;
+  }[];
 }
