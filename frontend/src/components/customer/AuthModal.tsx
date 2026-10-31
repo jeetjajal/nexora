@@ -18,8 +18,6 @@ import {
   KeyRound,
   Store,
   CheckCircle2,
-  MapPin,
-  Truck,
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
@@ -93,7 +91,6 @@ export const AuthModal: React.FC = () => {
           }
           if (!riderLicense.trim()) throw new Error('Valid Driving License Number required');
         }
-        // Authorize and set Delivery Partner role
         await login(email.trim() || 'ramesh.patel@rider.nexora.in', password || 'RiderSecure123');
         setRole('delivery');
       } else if (activeRole === 'store') {
@@ -153,7 +150,6 @@ export const AuthModal: React.FC = () => {
       title: 'ગ્રાહક (User)',
       englishTitle: 'Customer 2FA',
       icon: <ShoppingBag size={15} />,
-      color: 'bg-emerald-600 text-white',
       badge: '10-Min Store',
       tagline: 'ગ્રાહક સેવા સુરક્ષિત લૉગિન (Customer Single Sign-On)',
       desc: '31 કેટેગરીઝ, તાજા શાકભાજી, ડેરી અને કરિયાણું 8-10 મિનિટમાં ડિલિવરી મેળવો.',
@@ -163,7 +159,6 @@ export const AuthModal: React.FC = () => {
       title: 'ડિલિવરી પાર્ટનર',
       englishTitle: 'Rider Portal',
       icon: <Bike size={15} />,
-      color: 'bg-amber-600 text-white',
       badge: 'Rider Duty',
       tagline: 'ડિલિવરીમેન સુરક્ષિત લૉગિન (Delivery Partner 2FA)',
       desc: 'લાઈવ જીપીએસ રડાર નેવિગેશન, રાઇડર ડ્યુટી ટોગલ, 4-અંકનો OTP અને દૈનિક આવક.',
@@ -173,7 +168,6 @@ export const AuthModal: React.FC = () => {
       title: 'સ્ટોર મેનેજર',
       englishTitle: 'Store Ops',
       icon: <Box size={15} />,
-      color: 'bg-blue-600 text-white',
       badge: 'Hub #04',
       tagline: 'ડાર્ક સ્ટોર મેનેજર પોર્ટલ (Store Fulfillment Manager)',
       desc: 'SG Highway #04 માઇક્રો-હબ ઓર્ડર કતાર, પિકર/પેકર સ્ટેશન અને ઇન્વેન્ટરી સ્કેનર.',
@@ -183,7 +177,6 @@ export const AuthModal: React.FC = () => {
       title: 'સુપર એડમિન',
       englishTitle: 'Control Tower',
       icon: <ShieldCheck size={15} />,
-      color: 'bg-purple-700 text-white',
       badge: 'Surveillance',
       tagline: 'સુપર એડમિન કંટ્રોલ ટાવર (Executive Surveillance)',
       desc: 'ઓલ-સિટી ઓર્ડર લાઇફસાઇકલ, લાઈવ ડાર્ક સ્ટોર્સ મેપ, ફ્લીટ રડાર અને નેટ રેવન્યુ.',
@@ -201,17 +194,20 @@ export const AuthModal: React.FC = () => {
       />
 
       {/* Main Responsive Modal Card */}
-      <div className="relative w-full max-w-lg bg-white rounded-card shadow-2xl z-10 overflow-hidden border border-brand-border flex flex-col my-auto max-h-[95vh]">
-        {/* 1. Top Role Selector Tabs (Nagrik Seva AI Style Pill Bar) */}
-        <div className="bg-slate-100 p-2 border-b border-brand-border">
-          <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider px-2 py-1 flex items-center justify-between">
-            <span>પોર્ટલ ભૂમિકા પસંદ કરો (Select Your Role)</span>
-            <span className="text-[9px] bg-slate-200 px-1.5 py-0.5 rounded font-black">
+      <div className="relative w-full max-w-lg bg-white rounded-card shadow-modal z-10 overflow-hidden border border-brand-border flex flex-col my-auto max-h-[95vh]">
+        {/* 1. Top Role Selector Tabs (NEXORA Theme Pill Bar) */}
+        <div className="bg-brand-bg p-2.5 border-b border-brand-border">
+          <div className="text-[10px] font-extrabold text-brand-muted uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-brand-text">
+              <span className="w-2 h-2 rounded-full bg-brand-primary" />
+              <span>પોર્ટલ ભૂમિકા પસંદ કરો (Select Role)</span>
+            </span>
+            <span className="text-[9px] bg-brand-primary/10 text-brand-primary px-2 py-0.5 rounded-full font-black">
               4 Roles Active
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1.5">
             {roleTabs.map((tab) => {
               const isActive = activeRole === tab.id;
               return (
@@ -225,17 +221,19 @@ export const AuthModal: React.FC = () => {
                   }}
                   className={`flex flex-col items-center justify-center py-2 px-1.5 rounded-xl font-bold transition-all text-xs ${
                     isActive
-                      ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md scale-[1.02]'
-                      : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
+                      ? 'bg-brand-primary text-white shadow-card scale-[1.02] ring-2 ring-brand-accent/40'
+                      : 'bg-white hover:bg-brand-bg text-brand-text/80 hover:text-brand-text border border-brand-border'
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    {tab.icon}
+                    <span className={isActive ? 'text-brand-accent' : 'text-brand-primary'}>
+                      {tab.icon}
+                    </span>
                     <span className="text-[11px] font-black">{tab.title}</span>
                   </div>
                   <span
                     className={`text-[9px] mt-0.5 font-semibold ${
-                      isActive ? 'text-white/90' : 'text-slate-400'
+                      isActive ? 'text-brand-accent' : 'text-brand-muted'
                     }`}
                   >
                     {tab.englishTitle}
@@ -246,10 +244,10 @@ export const AuthModal: React.FC = () => {
           </div>
         </div>
 
-        {/* 2. Hero Header Card for Active Role (Nagrik Seva AI Orange/Green Banner) */}
-        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 text-white p-4 sm:p-5 flex items-start justify-between relative overflow-hidden">
+        {/* 2. Hero Header Card for Active Role (NEXORA Leaf Green Gradient & Zesty Lime) */}
+        <div className="bg-gradient-to-r from-[#0f462d] via-[#176B45] to-[#0c831f] text-white p-4 sm:p-5 flex items-start justify-between relative overflow-hidden border-b border-brand-primaryHover">
           <div className="relative z-10 max-w-[85%]">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-[10px] font-black tracking-wide uppercase mb-1.5 border border-white/25">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-accent/20 backdrop-blur-xs text-[10px] font-black tracking-wide uppercase mb-1.5 border border-brand-accent/30 text-brand-accent">
               <span>{currentTabInfo.badge}</span>
               <span>•</span>
               <span>2FA Secured</span>
@@ -275,7 +273,7 @@ export const AuthModal: React.FC = () => {
 
         {/* 3. Login vs Register Switcher (Available for Customer and Rider) */}
         {(activeRole === 'customer' || activeRole === 'delivery') && (
-          <div className="flex border-b border-brand-border bg-brand-bg/40 text-xs font-bold">
+          <div className="flex border-b border-brand-border bg-brand-bg/50 text-xs font-bold">
             <button
               type="button"
               onClick={() => {
@@ -284,7 +282,7 @@ export const AuthModal: React.FC = () => {
               }}
               className={`flex-1 py-2.5 text-center transition-all ${
                 mode === 'LOGIN'
-                  ? 'border-b-2 border-orange-500 text-orange-600 bg-white font-black'
+                  ? 'border-b-2 border-brand-primary text-brand-primary bg-white font-black'
                   : 'text-brand-muted hover:text-brand-text'
               }`}
             >
@@ -298,7 +296,7 @@ export const AuthModal: React.FC = () => {
               }}
               className={`flex-1 py-2.5 text-center transition-all ${
                 mode === 'REGISTER'
-                  ? 'border-b-2 border-orange-500 text-orange-600 bg-white font-black'
+                  ? 'border-b-2 border-brand-primary text-brand-primary bg-white font-black'
                   : 'text-brand-muted hover:text-brand-text'
               }`}
             >
@@ -309,7 +307,7 @@ export const AuthModal: React.FC = () => {
 
         {/* Alerts */}
         {errorMsg && (
-          <div className="bg-red-50 text-red-700 px-4 py-2.5 text-xs flex items-center gap-2 border-b border-red-200">
+          <div className="bg-red-50 text-brand-danger px-4 py-2.5 text-xs flex items-center gap-2 border-b border-red-200">
             <AlertCircle size={15} className="shrink-0" />
             <span className="font-semibold">{errorMsg}</span>
           </div>
@@ -343,7 +341,7 @@ export const AuthModal: React.FC = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="દા.ત. અદિતિ શર્મા / Aditi Sharma"
-                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         required
                       />
                     </div>
@@ -364,7 +362,7 @@ export const AuthModal: React.FC = () => {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="9876543210"
                         maxLength={10}
-                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500 font-mono"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary font-mono"
                         required
                       />
                     </div>
@@ -386,7 +384,7 @@ export const AuthModal: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="aditi@nexora.in અથવા 9876543210"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -404,7 +402,7 @@ export const AuthModal: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -434,7 +432,7 @@ export const AuthModal: React.FC = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="દા.ત. રમેશ પટેલ / Ramesh Patel"
-                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         required
                       />
                     </div>
@@ -483,7 +481,7 @@ export const AuthModal: React.FC = () => {
                         value={riderLicense}
                         onChange={(e) => setRiderLicense(e.target.value.toUpperCase())}
                         placeholder="GJ-01-2024-009842"
-                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono focus:outline-none focus:ring-1 focus:ring-brand-primary"
                         required
                       />
                     </div>
@@ -508,7 +506,7 @@ export const AuthModal: React.FC = () => {
                       setEmail(e.target.value);
                     }}
                     placeholder="દા.ત. NX-R9042 અથવા 9876543210"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -526,7 +524,7 @@ export const AuthModal: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -549,7 +547,7 @@ export const AuthModal: React.FC = () => {
                   <select
                     value={managerStoreHub}
                     onChange={(e) => setManagerStoreHub(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text text-xs font-bold focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-primary"
                   >
                     <option value="DS-AHM-04">SG Highway #04 (Shapath V - Bodakdev)</option>
                     <option value="DS-AHM-02">Vastrapur Hub #02 (IIM Road)</option>
@@ -573,7 +571,7 @@ export const AuthModal: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="manager.sg@nexora.in"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -591,7 +589,7 @@ export const AuthModal: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -616,7 +614,7 @@ export const AuthModal: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@nexora.in"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -636,7 +634,7 @@ export const AuthModal: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -657,7 +655,7 @@ export const AuthModal: React.FC = () => {
                     onChange={(e) => setAdminPin(e.target.value)}
                     placeholder="4-digit PIN (9042)"
                     maxLength={4}
-                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-purple-600"
+                    className="w-full pl-9 pr-3 py-2 bg-brand-bg border border-brand-border rounded-input text-brand-text font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-brand-primary"
                     required
                   />
                 </div>
@@ -669,7 +667,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:brightness-105 disabled:opacity-70 text-white rounded-button font-black text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+            className="w-full py-3 bg-brand-primary hover:bg-brand-primaryHover disabled:opacity-70 text-white rounded-button font-black text-xs flex items-center justify-center gap-2 shadow-button transition-all active:scale-98"
           >
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -677,18 +675,18 @@ export const AuthModal: React.FC = () => {
               <>
                 <span>
                   {mode === 'LOGIN'
-                    ? `${currentTabInfo.title} લૉગિન કરો (Enter Portal)`
+                    ? `${currentTabInfo.title} લૉગિન કરો (Enter Workspace)`
                     : `${currentTabInfo.title} રજીસ્ટ્રેશન પૂર્ણ કરો`}
                 </span>
-                <ArrowRight size={14} />
+                <ArrowRight size={14} className="text-brand-accent" />
               </>
             )}
           </button>
 
           {/* 1-Click Fast Preset Demo Buttons for Immediate Evaluation */}
           <div className="pt-2 border-t border-brand-border">
-            <div className="text-[10px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
-              <Sparkles size={11} className="text-amber-500" />
+            <div className="text-[10px] font-bold text-brand-muted mb-1.5 flex items-center gap-1">
+              <Sparkles size={11} className="text-brand-primary" />
               <span>1-ક્લિક ડાયરેક્ટ ડેમો એક્સેસ (Instant 1-Click Verification):</span>
             </div>
 
@@ -697,7 +695,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={() => handleQuickDemo('customer')}
                 disabled={isLoading}
-                className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>👤 1-Click Demo Customer Login (અદિતિ શર્મા)</span>
               </button>
@@ -708,7 +706,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={() => handleQuickDemo('delivery')}
                 disabled={isLoading}
-                className="w-full py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>🛵 1-Click Demo Rider Login (રમેશ પટેલ • EV NX-R9042)</span>
               </button>
@@ -719,7 +717,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={() => handleQuickDemo('store')}
                 disabled={isLoading}
-                className="w-full py-2 bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>🏪 1-Click Demo Manager Login (SG Highway #04 Hub)</span>
               </button>
@@ -730,7 +728,7 @@ export const AuthModal: React.FC = () => {
                 type="button"
                 onClick={() => handleQuickDemo('admin')}
                 disabled={isLoading}
-                className="w-full py-2 bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-brand-primary/10 hover:bg-brand-primary/20 border border-brand-primary/30 text-brand-primary rounded-button font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
                 <span>🛡️ 1-Click Demo Super Admin Login (Full Control Tower)</span>
               </button>
@@ -739,12 +737,12 @@ export const AuthModal: React.FC = () => {
         </form>
 
         {/* Footer Security Badges */}
-        <div className="bg-slate-50 p-3 border-t border-brand-border flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 font-medium">
+        <div className="bg-brand-bg p-3 border-t border-brand-border flex flex-wrap items-center justify-between gap-2 text-[10px] text-brand-muted font-medium">
           <div className="flex items-center gap-1">
-            <ShieldCheck size={13} className="text-orange-600 shrink-0" />
+            <ShieldCheck size={13} className="text-brand-primary shrink-0" />
             <span>2FA Auth &amp; DPOP Encrypted Session</span>
           </div>
-          <span className="font-mono font-bold text-slate-600">Nexora Security v2.0</span>
+          <span className="font-mono font-bold text-brand-primary">Nexora Leaf Green Theme</span>
         </div>
       </div>
     </div>

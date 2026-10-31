@@ -38,7 +38,7 @@ export const RolePortalModal: React.FC = () => {
       title: 'Customer Storefront',
       gujaratiTitle: 'ગ્રાહક સ્ટોર (Customer)',
       badge: '10-Min Delivery',
-      badgeColor: 'bg-green-100 text-green-800 border-green-200',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       description: 'Shop 31 categories, fresh vegetables, dairy, munchies and groceries with 8-10 minute lightning delivery.',
       features: ['31 Categories & Subcategories', 'Blinkit Dual-Column View', 'Order Again & Saved Addresses', 'Online Razorpay / COD'],
       icon: <ShoppingBag size={24} className="text-emerald-700" />,
@@ -97,11 +97,11 @@ export const RolePortalModal: React.FC = () => {
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-3xl bg-white rounded-card shadow-2xl z-10 overflow-hidden border border-brand-border flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-3xl bg-white rounded-card shadow-modal z-10 overflow-hidden border border-brand-border flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-orange-600 via-amber-600 to-emerald-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-[#0f462d] via-[#176B45] to-[#0c831f] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-white text-orange-600 flex items-center justify-center font-black text-base shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-brand-accent text-brand-text flex items-center justify-center font-black text-base shadow-sm">
               ⚡
             </div>
             <div>
@@ -132,14 +132,14 @@ export const RolePortalModal: React.FC = () => {
                 onClick={() => handleSelect(p.id)}
                 className={`relative p-4 sm:p-5 rounded-card border bg-white cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 flex flex-col justify-between ${
                   isCurrent
-                    ? 'border-orange-500 ring-2 ring-orange-400/30 shadow-sm'
-                    : 'border-brand-border hover:border-orange-400/60'
+                    ? 'border-brand-primary ring-2 ring-brand-primary/20 shadow-sm'
+                    : 'border-brand-border hover:border-brand-primary/60'
                 }`}
               >
                 {/* Active Indicator */}
                 {isCurrent && (
-                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
-                    <CheckCircle2 size={11} />
+                  <div className="absolute top-3 right-3 flex items-center gap-1 bg-brand-primary text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                    <CheckCircle2 size={11} className="text-brand-accent" />
                     <span>Active Workspace</span>
                   </div>
                 )}
@@ -159,7 +159,7 @@ export const RolePortalModal: React.FC = () => {
                           {p.badge}
                         </span>
                       </div>
-                      <p className="text-xs font-bold text-orange-600 mt-0.5">
+                      <p className="text-xs font-bold text-brand-primary mt-0.5">
                         {p.gujaratiTitle}
                       </p>
                     </div>
@@ -174,7 +174,7 @@ export const RolePortalModal: React.FC = () => {
                   <ul className="space-y-1 mb-4 text-[11px] text-brand-text/90">
                     {p.features.map((feat, idx) => (
                       <li key={idx} className="flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-brand-primary shrink-0" />
                         <span>{feat}</span>
                       </li>
                     ))}
@@ -186,13 +186,13 @@ export const RolePortalModal: React.FC = () => {
                   type="button"
                   className={`w-full py-2.5 px-3 rounded-button font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs ${
                     isCurrent
-                      ? 'bg-orange-500 text-white hover:brightness-105'
-                      : 'bg-brand-bg hover:bg-orange-500 hover:text-white text-brand-text border border-brand-border'
+                      ? 'bg-brand-primary text-white hover:bg-brand-primaryHover'
+                      : 'bg-brand-bg hover:bg-brand-primary hover:text-white text-brand-text border border-brand-border'
                   }`}
                 >
-                  <Lock size={12} />
+                  <Lock size={12} className={isCurrent ? 'text-brand-accent' : ''} />
                   <span>{isCurrent ? 'Continue Workspace →' : p.loginButtonText}</span>
-                  <ArrowRight size={13} />
+                  <ArrowRight size={13} className={isCurrent ? 'text-brand-accent' : ''} />
                 </button>
               </div>
             );
