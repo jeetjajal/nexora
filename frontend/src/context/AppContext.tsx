@@ -230,14 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSavedAddresses(prev => prev.filter(a => a.id !== id));
   };
 
-  // Load starter items in cart for smooth first-time demo
-  useEffect(() => {
-    setCart({
-      'p1': 2, // 2x Taaza Milk
-      'p5': 1, // 1x Tomatoes
-      'p15': 1, // 1x Lay's Magic Masala
-    });
-  }, []);
+
 
   const addToCart = (productId: string) => {
     setCart(prev => ({
