@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { ApiClient, DeliveryBatch } from '@/lib/api-client';
+import { ApiClient, DeliveryBatch, WhatsAppConversationSummary, WhatsAppBotResponse } from '@/lib/api-client';
 import {
   TrendingUp,
   Package,
@@ -23,7 +23,12 @@ import {
   UserCheck,
   ChevronRight,
   ShieldCheck,
-  Zap
+  Zap,
+  MessageSquare,
+  Bot,
+  Smartphone,
+  ExternalLink,
+  ShoppingCart
 } from 'lucide-react';
 
 interface MockOrder {
@@ -37,10 +42,26 @@ interface MockOrder {
   time: string;
 }
 
+interface ChatMessage {
+  id: string;
+  sender: 'CUSTOMER' | 'BOT';
+  text: string;
+  time: string;
+  paymentUrl?: string;
+  matchedItems?: {
+    productId: number;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    inStock: boolean;
+  }[];
+}
+
 export const ControlTower: React.FC = () => {
   const { activeOrder, updateOrderStatus, currentUser } = useApp();
   const token = currentUser?.accessToken || (typeof window !== 'undefined' ? localStorage.getItem('nexora_token') || undefined : undefined);
-  const [activeTab, setActiveTab] = useState<'DISPATCH_FEED' | 'MULTI_ORDER_BATCHING'>('DISPATCH_FEED');
+  const [activeTab, setActiveTab] = useState<'DISPATCH_FEED' | 'MULTI_ORDER_BATCHING' | 'WHATSAPP_BOT'>('DISPATCH_FEED');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
 
   // Multi-Order Batching State
@@ -49,6 +70,22 @@ export const ControlTower: React.FC = () => {
   const [generatingBatches, setGeneratingBatches] = useState<boolean>(false);
   const [batchActionLoading, setBatchActionLoading] = useState<number | null>(null);
   const [batchMessage, setBatchMessage] = useState<string | null>(null);
+
+  // WhatsApp AI State
+  const [waConversations, setWaConversations] = useState<WhatsAppConversationSummary[]>([]);
+  const [loadingWa, setLoadingWa] = useState<boolean>(false);
+  const [waPhone, setWaPhone] = useState<string>('+919876543210');
+  const [waCustomerName, setWaCustomerName] = useState<string>('Jignesh Shah');
+  const [waInputText, setWaInputText] = useState<string>('');
+  const [waSending, setWaSending] = useState<boolean>(false);
+  const [waChatMessages, setWaChatMessages] = useState<ChatMessage[]>([
+    {
+      id: 'msg-1',
+      sender: 'BOT',
+      text: "⚡ *Hello Jignesh! Welcome to NEXORA 10-Minute Commerce.*\nYou can order directly in English, Hindi, or Gujarati.\n👉 Try: '2 kilo batata ane 1 packet dudh moko'",
+      time: '11:20 AM',
+    },
+  ]);
 
   const initialOrders: MockOrder[] = [
     {
@@ -93,7 +130,6 @@ export const ControlTower: React.FC = () => {
     },
   ];
 
-  // If user placed an active order, add it to the top!
   const allOrders = activeOrder
     ? [
         {
@@ -120,22 +156,35 @@ export const ControlTower: React.FC = () => {
     ? allOrders
     : allOrders.filter(o => o.status === filterStatus);
 
-  // Fetch batches when tab switched to batching
+  // Fetch batches
   const fetchBatches = async () => {
     setLoadingBatches(true);
     try {
       const data = await ApiClient.getDeliveryBatches(undefined, token || undefined);
       setBatches(data);
     } catch {
-      // Handled by api fallback
     } finally {
       setLoadingBatches(false);
+    }
+  };
+
+  // Fetch WhatsApp sessions
+  const fetchWhatsAppConversations = async () => {
+    setLoadingWa(true);
+    try {
+      const list = await ApiClient.getWhatsAppConversations();
+      setWaConversations(list);
+    } catch {
+    } finally {
+      setLoadingWa(false);
     }
   };
 
   useEffect(() => {
     if (activeTab === 'MULTI_ORDER_BATCHING') {
       fetchBatches();
+    } else if (activeTab === 'WHATSAPP_BOT') {
+      fetchWhatsAppConversations();
     }
   }, [activeTab]);
 
@@ -192,6 +241,52 @@ export const ControlTower: React.FC = () => {
     }
   };
 
+  const handleSendWhatsApp = async (overrideText?: string) => {
+    const textToSend = overrideText || waInputText;
+    if (!textToSend.trim() || waSending) return;
+
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      sender: 'CUSTOMER',
+      text: textToSend,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setWaChatMessages(prev => [...prev, userMsg]);
+    setWaInputText('');
+    setWaSending(true);
+
+    try {
+      const response: WhatsAppBotResponse = await ApiClient.simulateWhatsAppMessage(
+        waPhone,
+        waCustomerName,
+        textToSend
+      );
+
+      const botMsg: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        sender: 'BOT',
+        text: response.replyMessage,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        paymentUrl: response.paymentUrl,
+        matchedItems: response.matchedItems,
+      };
+
+      setWaChatMessages(prev => [...prev, botMsg]);
+      fetchWhatsAppConversations();
+    } catch (err: any) {
+      const errMsg: ChatMessage = {
+        id: `bot-err-${Date.now()}`,
+        sender: 'BOT',
+        text: `⚠️ Bot processing error: ${err.message}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setWaChatMessages(prev => [...prev, errMsg]);
+    } finally {
+      setWaSending(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 space-y-6">
       {/* Title & Top Bar */}
@@ -231,15 +326,29 @@ export const ControlTower: React.FC = () => {
               }`}
             >
               <Layers size={13} />
-              <span>Smart Batching Engine</span>
+              <span>Smart Batching</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('WHATSAPP_BOT')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-button transition-all ${
+                activeTab === 'WHATSAPP_BOT'
+                  ? 'bg-brand-primary text-white shadow-xs'
+                  : 'text-brand-muted hover:text-brand-text'
+              }`}
+            >
+              <MessageSquare size={13} />
+              <span>WhatsApp AI</span>
             </button>
           </div>
 
           <button 
-            onClick={() => activeTab === 'MULTI_ORDER_BATCHING' ? fetchBatches() : null}
+            onClick={() => {
+              if (activeTab === 'MULTI_ORDER_BATCHING') fetchBatches();
+              if (activeTab === 'WHATSAPP_BOT') fetchWhatsAppConversations();
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-bg hover:bg-brand-border text-brand-text text-xs font-bold rounded-button transition-colors"
           >
-            <RefreshCw size={13} className={loadingBatches ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loadingBatches || loadingWa ? 'animate-spin' : ''} />
             <span>Refresh</span>
           </button>
           <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-100 font-bold px-3 py-1.5 rounded-full">
@@ -275,16 +384,16 @@ export const ControlTower: React.FC = () => {
             <Layers size={14} className="text-brand-primary" />
           </div>
           <span className="text-xl font-black text-brand-text">{batches.length || 2} Batches</span>
-          <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">34% Fleet Mileage Saved</span>
+          <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">34% Mileage Saved</span>
         </div>
 
         <div className="bg-white p-4 rounded-card border border-brand-border shadow-card">
           <div className="flex items-center justify-between text-brand-muted mb-1">
-            <span className="text-[11px] font-bold">Fleet Utilization</span>
-            <Bike size={14} className="text-brand-primary" />
+            <span className="text-[11px] font-bold">WhatsApp Conversions</span>
+            <MessageSquare size={14} className="text-brand-primary" />
           </div>
-          <span className="text-xl font-black text-brand-text">64 Active</span>
-          <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">91% In-Transit Ratio</span>
+          <span className="text-xl font-black text-brand-text">{waConversations.length || 3} Active</span>
+          <span className="text-[10px] text-emerald-600 font-bold block mt-0.5">Zero Price Hallucination</span>
         </div>
 
         <div className="bg-white p-4 rounded-card border border-brand-border shadow-card sm:col-span-2 lg:col-span-1">
@@ -293,7 +402,7 @@ export const ControlTower: React.FC = () => {
             <ShieldCheck size={14} className="text-emerald-600" />
           </div>
           <span className="text-xl font-black text-emerald-700">4.1°C Safe</span>
-          <span className="text-[10px] text-brand-muted font-bold block mt-0.5">All 4 Chillers In Bounds</span>
+          <span className="text-[10px] text-brand-muted font-bold block mt-0.5">FEFO Expiry Active</span>
         </div>
       </div>
 
@@ -397,7 +506,6 @@ export const ControlTower: React.FC = () => {
       {/* VIEW 2: SMART MULTI-ORDER BATCHING ENGINE */}
       {activeTab === 'MULTI_ORDER_BATCHING' && (
         <div className="space-y-4">
-          {/* Action Bar */}
           <div className="bg-white p-4 rounded-card border border-brand-border shadow-card flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -422,11 +530,9 @@ export const ControlTower: React.FC = () => {
             </button>
           </div>
 
-          {/* Batches Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {batches.map((batch) => (
               <div key={batch.id} className="bg-white rounded-card border border-brand-border shadow-card overflow-hidden flex flex-col justify-between">
-                {/* Header */}
                 <div className="p-4 border-b border-brand-border bg-brand-bg/40 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-black text-xs text-brand-primary bg-white px-2 py-0.5 rounded border border-brand-border">
@@ -454,7 +560,6 @@ export const ControlTower: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Metrics ribbon */}
                 <div className="grid grid-cols-3 divide-x divide-brand-border border-b border-brand-border text-center text-xs py-2 bg-white">
                   <div>
                     <span className="text-[10px] text-brand-muted block font-semibold">Bundled Orders</span>
@@ -470,7 +575,6 @@ export const ControlTower: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Rider Assignment Info */}
                 <div className="p-3 bg-brand-bg/20 border-b border-brand-border flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     <Bike size={15} className="text-brand-primary" />
@@ -493,7 +597,6 @@ export const ControlTower: React.FC = () => {
                   )}
                 </div>
 
-                {/* Sequenced Stops List */}
                 <div className="p-4 space-y-2.5 flex-1">
                   <span className="text-[10px] font-extrabold uppercase text-brand-muted tracking-wider block">
                     Optimized Drop Sequence:
@@ -517,7 +620,6 @@ export const ControlTower: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Actions Footer */}
                 <div className="p-3 bg-brand-bg/60 border-t border-brand-border flex items-center justify-between gap-2">
                   <div className="text-[10px] text-brand-muted">
                     Created {new Date(batch.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -548,6 +650,226 @@ export const ControlTower: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: WHATSAPP CONVERSATIONAL COMMERCE AI BOT */}
+      {activeTab === 'WHATSAPP_BOT' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: Live WhatsApp Sessions List */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="bg-white p-4 rounded-card border border-brand-border shadow-card">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="text-brand-primary" size={18} />
+                  <h3 className="text-sm font-black text-brand-text">Live WhatsApp Sessions</h3>
+                </div>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">
+                  Webhook Active
+                </span>
+              </div>
+              <p className="text-[11px] text-brand-muted">
+                Meta Cloud API endpoint: <code className="bg-brand-bg px-1 py-0.5 rounded text-brand-text font-mono">POST /api/v1/whatsapp/webhook</code>
+              </p>
+
+              <div className="mt-4 space-y-2.5">
+                {waConversations.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setWaPhone(c.waPhoneNumber);
+                      setWaCustomerName(c.customerName);
+                    }}
+                    className={`p-3 rounded-card border cursor-pointer transition-all ${
+                      waPhone === c.waPhoneNumber
+                        ? 'border-brand-primary bg-brand-primary/5 shadow-xs'
+                        : 'border-brand-border bg-white hover:bg-brand-bg/50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs font-bold text-brand-text mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">
+                          {c.preferredLanguage === 'gu' ? '🇬🇺' : c.preferredLanguage === 'hi' ? '🇮🇳' : '🇬🇧'}
+                        </span>
+                        <span>{c.customerName}</span>
+                      </div>
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${
+                          c.currentState === 'ORDER_PLACED'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : c.currentState === 'AWAITING_CONFIRMATION'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-brand-bg text-brand-muted'
+                        }`}
+                      >
+                        {c.currentState}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-brand-muted truncate mb-1">
+                      {c.lastMessage}
+                    </p>
+
+                    <div className="flex items-center justify-between text-[10px] text-brand-muted">
+                      <span>{c.waPhoneNumber}</span>
+                      <span>{c.messageCount} msgs • {new Date(c.lastActiveAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Interactive WhatsApp Terminal & Simulator */}
+          <div className="lg:col-span-7 bg-white rounded-card border border-brand-border shadow-card flex flex-col h-[650px] overflow-hidden">
+            {/* Simulator Header */}
+            <div className="p-4 bg-emerald-800 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-700 border border-emerald-500/50 flex items-center justify-center font-black text-sm">
+                  NX
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-sm">NEXORA Official WhatsApp Bot</span>
+                    <span className="bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full">
+                      ✓ Verified Business
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-emerald-200">
+                    Multilingual Gujarati / Hindi / English NLP • Zero Price Hallucination
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right text-[10px] text-emerald-200">
+                <span className="block font-bold text-white">{waCustomerName}</span>
+                <span>{waPhone}</span>
+              </div>
+            </div>
+
+            {/* Quick Prompt Chips */}
+            <div className="p-2.5 bg-brand-bg/60 border-b border-brand-border flex items-center gap-1.5 overflow-x-auto text-[11px]">
+              <span className="text-[10px] font-extrabold uppercase text-brand-muted shrink-0 mr-1">
+                Quick Test:
+              </span>
+              <button
+                onClick={() => handleSendWhatsApp('2 kilo batata ane 1 packet dudh moko')}
+                className="px-2.5 py-1 bg-white hover:bg-brand-primary/10 hover:border-brand-primary border border-brand-border rounded-full font-bold text-brand-text whitespace-nowrap transition-colors"
+              >
+                🇬🇺 2 kilo batata ane 1 packet dudh moko
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp('1 packet doodh aur 2 kg aalu bhejo')}
+                className="px-2.5 py-1 bg-white hover:bg-brand-primary/10 hover:border-brand-primary border border-brand-border rounded-full font-bold text-brand-text whitespace-nowrap transition-colors"
+              >
+                🇮🇳 1 packet doodh aur 2 kg aalu bhejo
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp('Send 1L Amul Milk, 2kg Potato, and 1 loaf Bread')}
+                className="px-2.5 py-1 bg-white hover:bg-brand-primary/10 hover:border-brand-primary border border-brand-border rounded-full font-bold text-brand-text whitespace-nowrap transition-colors"
+              >
+                🇬🇧 Send 1L Amul Milk, 2kg Potato, and 1 loaf Bread
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp('CONFIRM')}
+                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full font-bold whitespace-nowrap transition-colors shadow-xs"
+              >
+                ⚡ CONFIRM
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp('TRACK')}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-bold whitespace-nowrap transition-colors shadow-xs"
+              >
+                🔍 TRACK
+              </button>
+              <button
+                onClick={() => handleSendWhatsApp('CANCEL')}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full font-bold whitespace-nowrap transition-colors shadow-xs"
+              >
+                ❌ CANCEL
+              </button>
+            </div>
+
+            {/* Chat Body */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#E5DDD5]/30">
+              {waChatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.sender === 'CUSTOMER' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-xs space-y-2 ${
+                      msg.sender === 'CUSTOMER'
+                        ? 'bg-[#DCF8C6] text-brand-text rounded-tr-none'
+                        : 'bg-white text-brand-text rounded-tl-none border border-brand-border/60'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap font-sans leading-relaxed">
+                      {msg.text}
+                    </div>
+
+                    {/* Matched items breakdown */}
+                    {msg.matchedItems && msg.matchedItems.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-brand-border/40 text-[10px] space-y-1">
+                        <span className="font-extrabold uppercase text-brand-muted block">
+                          Verified DB Catalogue Matches:
+                        </span>
+                        {msg.matchedItems.map((it) => (
+                          <div key={it.productId} className="flex items-center justify-between font-mono bg-brand-bg/50 px-2 py-1 rounded">
+                            <span>{it.productName} ({it.quantity}x)</span>
+                            <span className="font-bold text-brand-primary">₹{it.subtotal.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Payment or tracking link button */}
+                    {msg.paymentUrl && (
+                      <a
+                        href={msg.paymentUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-primary text-white font-extrabold text-[10px] rounded shadow-xs hover:bg-brand-primaryHover transition-colors mt-2"
+                      >
+                        <ExternalLink size={12} />
+                        <span>Open Razorpay / Live Map</span>
+                      </a>
+                    )}
+
+                    <div className="text-[9px] text-brand-muted text-right">
+                      {msg.time} {msg.sender === 'CUSTOMER' && '✓✓'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {waSending && (
+                <div className="flex justify-start">
+                  <div className="bg-white rounded-2xl p-3 text-xs rounded-tl-none border border-brand-border text-brand-muted animate-pulse">
+                    NEXORA AI is typing...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input Bar */}
+            <div className="p-3 bg-white border-t border-brand-border flex items-center gap-2">
+              <input
+                type="text"
+                value={waInputText}
+                onChange={(e) => setWaInputText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendWhatsApp()}
+                placeholder="Type in English, Hindi, or Gujarati (e.g., 2 kilo batata ane 1 packet dudh moko)..."
+                className="flex-1 px-4 py-2 text-xs bg-brand-bg border border-brand-border rounded-button focus:outline-none focus:border-brand-primary"
+              />
+              <button
+                onClick={() => handleSendWhatsApp()}
+                disabled={!waInputText.trim() || waSending}
+                className="p-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-button transition-colors shadow-xs"
+              >
+                <Send size={15} />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -183,7 +183,9 @@ public class SecurityConfig {
                                 "/loadtesting.html",
                                 // PHASE 28: Final SDE System Design Optimization & Interview Dashboard
                                 "/api/v1/system-design/**",
-                                "/system-design.html"
+                                "/system-design.html",
+                                // NEXORA 3.0: WhatsApp Commerce Webhook & Simulation
+                                "/api/v1/whatsapp/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

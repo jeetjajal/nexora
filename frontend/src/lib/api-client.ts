@@ -925,6 +925,31 @@ export class ApiClient {
     const json = await res.json();
     return json.data;
   }
+
+  // Feature 3: WhatsApp Conversational Commerce AI Bot
+  static async simulateWhatsAppMessage(phone: string, customerName: string, message: string): Promise<WhatsAppBotResponse> {
+    const res = await fetch('/api/whatsapp/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, customerName, message }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'WhatsApp AI processing failed');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async getWhatsAppConversations(): Promise<WhatsAppConversationSummary[]> {
+    const res = await fetch('/api/whatsapp/conversations');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to fetch WhatsApp sessions');
+    }
+    const json = await res.json();
+    return json.data || [];
+  }
 }
 
 export interface StoreQueueOrder {
@@ -1200,4 +1225,32 @@ export interface DeliveryBatch {
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+
+export interface WhatsAppBotResponse {
+  replyMessage: string;
+  conversationState: string;
+  detectedLanguage: string;
+  orderId?: number;
+  paymentUrl?: string;
+  matchedItems?: {
+    productId: number;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+    inStock: boolean;
+  }[];
+}
+
+export interface WhatsAppConversationSummary {
+  id: number;
+  waPhoneNumber: string;
+  customerName: string;
+  currentState: string;
+  preferredLanguage: string;
+  lastMessage: string;
+  lastActiveAt: string;
+  messageCount: number;
 }

@@ -35,4 +35,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     boolean existsByCategoriesId(Long categoryId);
 
     List<Product> findByAvailableTrue();
+
+    List<Product> findByNameContainingIgnoreCase(String name);
 }
