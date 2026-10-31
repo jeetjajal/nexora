@@ -849,6 +849,82 @@ export class ApiClient {
     const json = await res.json();
     return json.data;
   }
+
+  // Feature 2: Smart Multi-Order Delivery Batching
+  static async getDeliveryBatches(storeId?: number, token?: string): Promise<DeliveryBatch[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const url = storeId ? `/api/admin/batches?storeId=${storeId}` : '/api/admin/batches';
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to load delivery batches');
+    }
+    const json = await res.json();
+    return json.data || [];
+  }
+
+  static async generateDeliveryBatches(storeId?: number, maxBatchSize = 3, maxProximityKm = 2.5, token?: string): Promise<DeliveryBatch[]> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/admin/batches/generate', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ storeId, maxBatchSize, maxProximityKm }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to generate delivery batches');
+    }
+    const json = await res.json();
+    return json.data || [];
+  }
+
+  static async assignDeliveryBatch(batchId: number, deliveryPartnerId: number, token?: string): Promise<DeliveryBatch> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/admin/batches/${batchId}/assign`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ deliveryPartnerId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to assign delivery batch');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async dispatchDeliveryBatch(batchId: number, token?: string): Promise<DeliveryBatch> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/admin/batches/${batchId}/dispatch`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to dispatch delivery batch');
+    }
+    const json = await res.json();
+    return json.data;
+  }
+
+  static async cancelDeliveryBatch(batchId: number, token?: string): Promise<DeliveryBatch> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/admin/batches/${batchId}/cancel`, {
+      method: 'POST',
+      headers,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to cancel delivery batch');
+    }
+    const json = await res.json();
+    return json.data;
+  }
 }
 
 export interface StoreQueueOrder {
@@ -1089,4 +1165,39 @@ export interface NotificationLogItem {
   retryCount: number;
   createdAt: string;
   deliveredAt?: string;
+}
+
+
+export interface BatchOrderStop {
+  orderId: number;
+  orderNumber: string;
+  sequenceIndex: number;
+  customerName: string;
+  customerPhone?: string;
+  deliveryAddress: string;
+  latitude?: number;
+  longitude?: number;
+  totalAmount: number;
+  status: string;
+  estimatedDeliveryTime?: string;
+  actualDeliveryTime?: string;
+}
+
+export interface DeliveryBatch {
+  id: number;
+  batchCode: string;
+  storeId: number;
+  storeName: string;
+  deliveryPartnerId?: number;
+  riderName?: string;
+  riderPhone?: string;
+  status: 'CREATED' | 'ASSIGNED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+  orderCount: number;
+  totalDistanceKm: number;
+  estimatedDurationMins: number;
+  stops: BatchOrderStop[];
+  dispatchedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
