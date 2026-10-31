@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Zap, ShieldCheck, Tag } from 'lucide-react';
+import { Sparkles, Zap, ShieldCheck, Tag, ArrowRight } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 export const HeroBanner: React.FC = () => {
@@ -12,67 +12,91 @@ export const HeroBanner: React.FC = () => {
       {/* Primary Highlights Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Banner 1: Rapid 10-Min Delivery */}
-        <div className="relative overflow-hidden rounded-card bg-gradient-to-r from-brand-primary to-[#1f7c52] text-white p-5 shadow-card flex flex-col justify-between min-h-[160px]">
-          <div className="z-10">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-accent text-brand-text font-black text-[10px] uppercase tracking-wider mb-2">
+        <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-brand-primary via-[#176B45] to-[#0f462d] text-white p-5 shadow-card flex flex-col justify-between min-h-[175px] group">
+          <div className="z-10 max-w-[65%] sm:max-w-[68%]">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-accent text-brand-text font-black text-[10px] uppercase tracking-wider mb-2 shadow-sm">
               <Zap size={11} fill="currentColor" /> Instant Rapid
             </span>
-            <h2 className="text-xl font-black leading-tight text-white">
+            <h2 className="text-lg sm:text-xl font-black leading-snug text-white">
               Groceries Delivered in <br />
               <span className="text-brand-accent underline decoration-wavy decoration-1">10 Minutes Flat</span>
             </h2>
-            <p className="text-xs text-white/80 mt-1 font-medium">
+            <p className="text-[11px] sm:text-xs text-white/85 mt-1 font-medium line-clamp-2">
               Over 5,000+ items picked directly from our nearest dark store.
             </p>
           </div>
 
           <div className="z-10 flex items-center gap-2 mt-3">
-            <span className="text-[11px] font-bold text-white/90 bg-white/15 px-2.5 py-1 rounded-full flex items-center gap-1">
-              <ShieldCheck size={13} className="text-brand-accent" /> 100% Quality Checked
+            <span className="text-[10px] sm:text-[11px] font-bold text-white/95 bg-white/20 backdrop-blur-sm px-2.5 py-1 rounded-full flex items-center gap-1 border border-white/10">
+              <ShieldCheck size={12} className="text-brand-accent" /> 100% Quality Checked
             </span>
           </div>
 
-          {/* Decorative geometric speed stripes */}
-          <div className="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-white/5 pointer-events-none" />
-          <div className="absolute right-4 top-4 text-5xl opacity-20 pointer-events-none">⚡</div>
+          {/* Real Photo: Rapid Grocery Bag & Fresh Produce */}
+          <div className="absolute -right-2 -bottom-2 w-28 h-28 sm:w-32 sm:h-32 md:w-28 md:h-28 lg:w-32 lg:h-32 pointer-events-none select-none z-0">
+            <div className="relative w-full h-full transform rotate-[-4deg] group-hover:rotate-0 group-hover:scale-105 transition-all duration-300">
+              <img
+                src="/assets/banners/banner-delivery.jpg"
+                alt="Fresh Groceries in Rapid Delivery Bag"
+                className="w-full h-full object-cover rounded-2xl shadow-2xl border-2 border-white/30"
+                loading="eager"
+              />
+              <span className="absolute -top-1.5 -left-1.5 bg-brand-accent text-brand-text font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-0.5 border border-white/50">
+                <Zap size={9} fill="currentColor" /> 10m
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Banner 2: Fresh Farm Produce */}
-        <div className="relative overflow-hidden rounded-card bg-[#eef7ee] border border-[#d6ebd6] text-brand-text p-5 shadow-card flex flex-col justify-between min-h-[160px]">
-          <div className="z-10">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-primary text-white font-black text-[10px] uppercase tracking-wider mb-2">
+        {/* Banner 2: Fresh Farm Produce (Fruits & Vegetables) */}
+        <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-[#f0f9f3] via-[#e5f5eb] to-[#d6edd9] border border-[#c3e4cb] text-brand-text p-5 shadow-card flex flex-col justify-between min-h-[175px] group">
+          <div className="z-10 max-w-[65%] sm:max-w-[68%]">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-primary text-white font-black text-[10px] uppercase tracking-wider mb-2 shadow-sm">
               <Sparkles size={11} /> Farm to Kitchen
             </span>
-            <h3 className="text-xl font-black leading-tight text-brand-text">
+            <h3 className="text-lg sm:text-xl font-black leading-snug text-brand-text">
               Crisp Veggies & <br />
               <span className="text-brand-primary">Luscious Fresh Fruits</span>
             </h3>
-            <p className="text-xs text-brand-muted mt-1 font-medium">
+            <p className="text-[11px] sm:text-xs text-brand-muted mt-1 font-medium line-clamp-2">
               Sourced daily at 4 AM from certified regional organic farmers.
             </p>
           </div>
 
           <div className="z-10 flex items-center gap-2 mt-3">
-            <span className="text-[11px] font-bold text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-full">
+            <span className="text-[10px] sm:text-[11px] font-black text-brand-primary bg-brand-primary/10 px-2.5 py-1 rounded-full border border-brand-primary/20">
               Up to 35% OFF Today
             </span>
           </div>
 
-          <div className="absolute right-4 bottom-2 text-5xl opacity-80 pointer-events-none">🥦🍎</div>
+          {/* Real Photo: Fresh Farm Fruits and Veggies */}
+          <div className="absolute -right-2 -bottom-2 w-28 h-28 sm:w-32 sm:h-32 md:w-28 md:h-28 lg:w-32 lg:h-32 pointer-events-none select-none z-0">
+            <div className="relative w-full h-full transform rotate-[3deg] group-hover:rotate-0 group-hover:scale-105 transition-all duration-300">
+              <img
+                src="/assets/banners/banner-fresh-produce.jpg"
+                alt="Farm Fresh Crisp Vegetables and Luscious Fruits"
+                className="w-full h-full object-cover rounded-2xl shadow-xl border-2 border-white"
+                loading="eager"
+              />
+              <span className="absolute -top-1.5 -right-1 bg-brand-primary text-white font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-md border border-white">
+                Fresh
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Banner 3: Coupon Code NEXORA50 */}
-        <div className="relative overflow-hidden rounded-card bg-brand-accent text-brand-text p-5 shadow-card flex flex-col justify-between min-h-[160px] border border-[#cbe65c]">
-          <div className="z-10">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-text text-brand-accent font-black text-[10px] uppercase tracking-wider mb-2">
+        {/* Banner 3: Welcome Offer / Gift Hamper */}
+        <div className="relative overflow-hidden rounded-card bg-gradient-to-br from-brand-accent via-[#d5f062] to-[#c7e54f] text-brand-text p-5 shadow-card flex flex-col justify-between min-h-[175px] border border-[#c3df4b] group">
+          <div className="z-10 max-w-[65%] sm:max-w-[68%]">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-text text-brand-accent font-black text-[10px] uppercase tracking-wider mb-2 shadow-sm">
               <Tag size={11} /> Welcome Offer
             </span>
-            <h3 className="text-xl font-black leading-tight text-brand-text">
+            <h3 className="text-lg sm:text-xl font-black leading-snug text-brand-text">
               Flat 50% OFF on <br />
               Your First 3 Orders
             </h3>
-            <p className="text-xs text-brand-text/80 mt-1 font-semibold">
-              Use code <span className="bg-brand-text text-brand-accent px-1.5 py-0.5 rounded font-mono font-bold">NEXORA50</span> at checkout
+            <p className="text-[11px] sm:text-xs text-brand-text/85 mt-1 font-semibold">
+              Use code <span className="bg-brand-text text-brand-accent px-1.5 py-0.5 rounded font-mono font-bold text-[10px]">NEXORA50</span> at checkout
             </p>
           </div>
 
@@ -82,13 +106,27 @@ export const HeroBanner: React.FC = () => {
                 applyCoupon('NEXORA50');
                 setIsCartOpen(true);
               }}
-              className="text-xs font-black bg-brand-primary hover:bg-brand-primaryHover text-white px-3.5 py-1.5 rounded-button shadow-sm transition-transform active:scale-95"
+              className="text-[11px] sm:text-xs font-black bg-brand-primary hover:bg-brand-primaryHover text-white px-3.5 py-1.5 rounded-button shadow-md transition-all active:scale-95 flex items-center gap-1"
             >
-              Apply Code Now &rarr;
+              <span>Apply Code Now</span>
+              <ArrowRight size={12} />
             </button>
           </div>
 
-          <div className="absolute right-3 bottom-2 text-5xl opacity-40 pointer-events-none">🎁</div>
+          {/* Real Photo: Luxury Curated Gift Hamper Basket with Satin Ribbon */}
+          <div className="absolute -right-2 -bottom-2 w-28 h-28 sm:w-32 sm:h-32 md:w-28 md:h-28 lg:w-32 lg:h-32 pointer-events-none select-none z-0">
+            <div className="relative w-full h-full transform rotate-[-3deg] group-hover:rotate-0 group-hover:scale-105 transition-all duration-300">
+              <img
+                src="/assets/banners/banner-gift-hamper.jpg"
+                alt="Luxury Curated Gift Hamper Basket"
+                className="w-full h-full object-cover rounded-2xl shadow-xl border-2 border-white/90"
+                loading="eager"
+              />
+              <span className="absolute -top-1.5 -left-1.5 bg-brand-text text-brand-accent font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-md border border-brand-accent/50">
+                Hamper
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
