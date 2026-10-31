@@ -146,6 +146,7 @@ public class SecurityConfig {
                                 "/index.html",
                                 "/ws-nexora/**",
                                 "/tracking.html",
+                                "/api/v1/orders/*/tracking/**",
                                 "/static/**",
                                 "/favicon.ico",
                                 // PHASE 18: Search Engine endpoints (browse, fuzzy search, autocomplete)

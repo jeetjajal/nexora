@@ -132,6 +132,8 @@ export interface OrderTrackingInfo {
   assignedRiderPhone: string;
   assignedRiderVehicle: string;
   deliveryOtp?: string;
+  assignedRiderLocation?: { lat: number; lng: number };
+  speedKmh?: number;
   timeline: TrackingTimelineEvent[];
   createdAt: string;
 }
@@ -363,6 +365,53 @@ export class ApiClient {
 
     const json = await res.json();
     return json.data;
+  }
+
+  // Orders: Real-time Live SSE Order Stream
+  static subscribeToOrderStream(
+    orderId: string,
+    onLocation: (location: any) => void,
+    onStatus: (status: any) => void,
+    onError: (err: any) => void,
+    token?: string
+  ): () => void {
+    if (typeof window === 'undefined' || !('EventSource' in window)) {
+      onError(new Error('EventSource not supported'));
+      return () => {};
+    }
+
+    const url = `/api/orders/${orderId}/track/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+    const eventSource = new EventSource(url);
+
+    eventSource.addEventListener('init', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.location) onLocation(data.location);
+        if (data.status) onStatus(data.status);
+      } catch {}
+    });
+
+    eventSource.addEventListener('location', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        onLocation(data);
+      } catch {}
+    });
+
+    eventSource.addEventListener('status', (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data);
+        onStatus(data);
+      } catch {}
+    });
+
+    eventSource.onerror = (err) => {
+      onError(err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }
 
   // Orders: Cancel Order

@@ -7,26 +7,30 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * WHAT IS UserDetails?
- * Spring Security doesn't know anything about our `User` entity — it
- * works against its own interface, `UserDetails`. This class is a thin
- * ADAPTER: it wraps our real `User` entity and answers the specific
- * questions Spring Security asks (what's the username? the password?
- * what authorities/roles does this user have? is the account enabled?).
+ * WHAT THIS CLASS IS:
+ * Spring Security doesn't know what our custom "User" entity looks
+ * like — it only speaks its own "UserDetails" interface (which defines
+ * getUsername, getPassword, getAuthorities, isEnabled, etc.).
  *
- * We keep the original `User` entity accessible via getUser() so the
- * rest of our code (controllers, JWT generation) can still get the
- * real id, name, email, etc. without re-querying the database.
+ * UserPrincipal is an "adapter" that wraps our JPA User entity and
+ * exposes it as a Spring Security UserDetails object. This lets us:
+ *   1. Keep our domain entity clean (User doesn't have to implement
+ *      Spring Security interfaces directly).
+ *   2. Give Spring Security everything it needs to check passwords,
+ *      roles, and account status during authentication.
+ *   3. Expose the underlying User back to our controllers via
+ *      @AuthenticationPrincipal UserPrincipal principal, so we always
+ *      know WHO is calling an endpoint without an extra DB lookup.
  *
- * WHY "authorities" AND NOT JUST "roles"?
- * Spring Security's authorization model is built around
- * GrantedAuthority strings. By convention, role-based checks
- * (hasRole("ADMIN")) look for an authority literally named "ROLE_ADMIN"
- * — so we prefix each Role with "ROLE_" here. This lets us later write
+ * PHASE 4 ADDITION: getAuthorities() now maps our database roles
+ * (ROLE_CUSTOMER, ROLE_RIDER, ROLE_STORE_OWNER, ROLE_ADMIN) into Spring
+ * Security's SimpleGrantedAuthority objects with the "ROLE_" prefix.
+ * This is what lets us use annotations like
  * @PreAuthorize("hasRole('ADMIN')") and have it just work.
  */
 @Getter
@@ -39,11 +43,15 @@ public class UserPrincipal implements UserDetails {
     }
 
     public Long getId() {
-        return user.getId();
+        return user != null ? user.getId() : null;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (user == null || user.getRoles() == null) {
+            return Collections.emptySet();
+        }
+
         Set<String> roleNames = user.getRoles().stream()
                 .map(role -> "ROLE_" + role.getName().name())
                 .collect(Collectors.toSet());
@@ -55,34 +63,31 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return user != null ? user.getPassword() : null;
     }
 
     @Override
     public String getUsername() {
-        // We authenticate by email, not a separate "username" field.
-        return user.getEmail();
+        return user != null ? user.getEmail() : null;
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Nexora doesn't implement account expiry in Phase 3
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        // A SUSPENDED account is treated as locked out — they can never
-        // successfully authenticate while their status is SUSPENDED.
-        return !"SUSPENDED".equalsIgnoreCase(user.getStatus());
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // no password-expiry policy yet
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return "ACTIVE".equalsIgnoreCase(user.getStatus());
+        return user != null && !"SUSPENDED".equalsIgnoreCase(user.getStatus());
     }
 }

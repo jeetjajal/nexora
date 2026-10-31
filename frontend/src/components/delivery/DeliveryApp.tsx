@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   FileText,
   Star,
+  Wifi,
+  Radio,
 } from 'lucide-react';
 
 export const DeliveryApp: React.FC = () => {
@@ -81,6 +83,60 @@ export const DeliveryApp: React.FC = () => {
     paymentMethod: 'UPI / Online Paid',
     createdAt: new Date().toISOString()
   } : null);
+
+
+
+  // Phase 1: Real-Time Rider Location Sharing
+  const [isGpsSharing, setIsGpsSharing] = useState(true);
+  const [gpsStatus, setGpsStatus] = useState<'IDLE' | 'ACTIVE' | 'DENIED' | 'UNSUPPORTED'>('IDLE');
+  const [lastCoords, setLastCoords] = useState<{ lat: number; lng: number; speed?: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!isGpsSharing || !currentOrder || currentOrder.status === 'DELIVERED') {
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsStatus('UNSUPPORTED');
+      return;
+    }
+
+    let lastSentEpoch = 0;
+    const watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        setGpsStatus('ACTIVE');
+        const { latitude, longitude, speed, heading } = pos.coords;
+        const speedKmh = speed ? +(speed * 3.6).toFixed(1) : 24.5;
+        setLastCoords({ lat: latitude, lng: longitude, speed: speedKmh });
+
+        const now = Date.now();
+        if (now - lastSentEpoch >= 2800) {
+          lastSentEpoch = now;
+          try {
+            await fetch('/api/rider/location', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: currentOrder.id,
+                latitude,
+                longitude,
+                speedKmh,
+                heading: heading || 0,
+              }),
+            });
+          } catch {}
+        }
+      },
+      (err) => {
+        if (err.code === 1) setGpsStatus('DENIED');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 2000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isGpsSharing, currentOrder]);
 
   const handleVerifyOtp = async () => {
     if (!currentOrder) return;
@@ -385,6 +441,49 @@ export const DeliveryApp: React.FC = () => {
                   </a>
                 </div>
               </div>
+            </div>
+
+            {/* Real-time Rider GPS Location Sharing Control */}
+            <div className="bg-[#f4f9f4] border border-[#cbe4cd] p-3.5 rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-xs ${
+                  isGpsSharing && gpsStatus === 'ACTIVE'
+                    ? 'bg-emerald-600 text-white animate-pulse'
+                    : 'bg-slate-200 text-slate-700'
+                }`}>
+                  <Radio size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-brand-text flex items-center gap-1.5">
+                    <span>Live GPS Telemetry Sharing</span>
+                    {isGpsSharing && gpsStatus === 'ACTIVE' && (
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                        Transmitting
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[10px] text-brand-muted">
+                    {gpsStatus === 'ACTIVE' && lastCoords
+                      ? `Beacon: ${lastCoords.lat.toFixed(4)}, ${lastCoords.lng.toFixed(4)} • Speed: ${lastCoords.speed || 24.5} km/h`
+                      : gpsStatus === 'DENIED'
+                      ? 'GPS permission denied in browser'
+                      : 'Stream coordinates to customer order tracker via SSE/WebSocket'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsGpsSharing(!isGpsSharing)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5 ${
+                  isGpsSharing
+                    ? 'bg-brand-primary text-white hover:bg-brand-primaryHover'
+                    : 'bg-white border border-brand-border text-brand-muted hover:text-brand-text'
+                }`}
+              >
+                <Wifi size={12} />
+                <span>{isGpsSharing ? 'Sharing On' : 'Start Sharing'}</span>
+              </button>
             </div>
 
             {/* Checklist */}

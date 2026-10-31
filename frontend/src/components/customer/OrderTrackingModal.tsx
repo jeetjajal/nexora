@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { ApiClient, OrderTrackingInfo } from '@/lib/api-client';
 import { LiveDeliveryMap } from './LiveDeliveryMap';
@@ -19,6 +19,7 @@ import {
   Star,
   Map as MapIcon,
   Activity,
+  Zap,
 } from 'lucide-react';
 
 export const OrderTrackingModal: React.FC = () => {
@@ -30,38 +31,104 @@ export const OrderTrackingModal: React.FC = () => {
   } = useApp();
 
   const [trackingData, setTrackingData] = useState<OrderTrackingInfo | null>(null);
+  const [liveLocation, setLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [liveSpeed, setLiveSpeed] = useState<number>(24.5);
+  const [liveEta, setLiveEta] = useState<number>(6);
+  const [streamMode, setStreamMode] = useState<'SSE' | 'POLLING' | 'CONNECTING'>('CONNECTING');
+  const [lastTelemetryTimestamp, setLastTelemetryTimestamp] = useState<Date | null>(null);
+
   const [isPolling, setIsPolling] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelMessage, setCancelMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'MAP' | 'TIMELINE'>('MAP');
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  // Poll tracking endpoint while modal is open
+  // Real-Time SSE Stream with Controlled Polling Fallback
   useEffect(() => {
     if (!isTrackingOpen || !activeOrder) return;
 
     let isMounted = true;
+    let pollingIntervalId: NodeJS.Timeout | null = null;
+    let sseCleanup: (() => void) | null = null;
 
-    const fetchTracking = async () => {
-      try {
-        setIsPolling(true);
-        const data = await ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken);
-        if (isMounted && data) {
-          setTrackingData(data);
+    const startPollingFallback = () => {
+      if (pollingIntervalId) return;
+      setStreamMode('POLLING');
+      const poll = async () => {
+        try {
+          setIsPolling(true);
+          const data = await ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken);
+          if (isMounted && data) {
+            setTrackingData(data);
+            if (data.assignedRiderLocation) {
+              setLiveLocation({
+                lat: data.assignedRiderLocation.lat,
+                lng: data.assignedRiderLocation.lng,
+              });
+              setLastTelemetryTimestamp(new Date());
+            }
+          }
+        } catch {
+          // Graceful fallback
+        } finally {
+          if (isMounted) setIsPolling(false);
         }
-      } catch {
-        // Fallback gracefully
-      } finally {
-        if (isMounted) setIsPolling(false);
-      }
+      };
+
+      poll();
+      pollingIntervalId = setInterval(poll, 5000);
     };
 
-    fetchTracking();
-    const intervalId = setInterval(fetchTracking, 4500);
+    // 1. Initial snapshot fetch
+    ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken)
+      .then((data) => {
+        if (isMounted && data) {
+          setTrackingData(data);
+          if (data.estimatedDeliveryMinutes) setLiveEta(data.estimatedDeliveryMinutes);
+        }
+      })
+      .catch(() => {});
+
+    // 2. Establish live SSE stream
+    try {
+      setStreamMode('CONNECTING');
+      sseCleanup = ApiClient.subscribeToOrderStream(
+        activeOrder.id,
+        (location) => {
+          if (!isMounted) return;
+          setStreamMode('SSE');
+          setLastTelemetryTimestamp(new Date());
+          if (location.latitude && location.longitude) {
+            setLiveLocation({ lat: location.latitude, lng: location.longitude });
+          }
+          if (location.speedKmh !== undefined) setLiveSpeed(location.speedKmh);
+          if (location.etaMinutes !== undefined) setLiveEta(location.etaMinutes);
+        },
+        (statusUpdate) => {
+          if (!isMounted) return;
+          setTrackingData((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              status: statusUpdate.status || prev.status,
+              estimatedDeliveryMinutes: statusUpdate.estimatedDeliveryMinutes || prev.estimatedDeliveryMinutes,
+            };
+          });
+        },
+        (error) => {
+          // Fallback to controlled polling if SSE stream fails or drops
+          startPollingFallback();
+        },
+        currentUser?.accessToken
+      );
+    } catch {
+      startPollingFallback();
+    }
 
     return () => {
       isMounted = false;
-      clearInterval(intervalId);
+      if (sseCleanup) sseCleanup();
+      if (pollingIntervalId) clearInterval(pollingIntervalId);
     };
   }, [isTrackingOpen, activeOrder, currentUser?.accessToken]);
 
@@ -98,7 +165,6 @@ export const OrderTrackingModal: React.FC = () => {
     try {
       await ApiClient.cancelOrder(activeOrder.id, currentUser?.accessToken);
       setCancelMessage('Order cancelled successfully. Stock restored.');
-      // Refresh
       const data = await ApiClient.trackOrder(activeOrder.id, currentUser?.accessToken);
       setTrackingData(data);
     } catch (err: any) {
@@ -121,8 +187,8 @@ export const OrderTrackingModal: React.FC = () => {
         <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-modal z-10 overflow-hidden border border-brand-border animate-in zoom-in-95 duration-150 flex flex-col max-h-[92vh]">
           {/* Header */}
           <div className="bg-brand-primary text-white p-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-brand-accent text-brand-text flex items-center justify-center font-black">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-full bg-brand-accent text-brand-text flex items-center justify-center font-black shadow-sm">
                 ⚡
               </span>
               <div>
@@ -130,6 +196,15 @@ export const OrderTrackingModal: React.FC = () => {
                   <h3 className="text-base font-black">Live Order Tracker</h3>
                   <span className="text-[10px] bg-brand-accent text-brand-text px-2 py-0.5 rounded-full font-black">
                     {activeOrder.id}
+                  </span>
+                  {/* Stream Transport Status Badge */}
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs ${
+                    streamMode === 'SSE'
+                      ? 'bg-emerald-400 text-emerald-950 ring-1 ring-emerald-300'
+                      : 'bg-amber-300 text-amber-950'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${streamMode === 'SSE' ? 'bg-emerald-900 animate-ping' : 'bg-amber-900'}`} />
+                    {streamMode === 'SSE' ? 'Live SSE' : 'Polling'}
                   </span>
                   {isPolling && (
                     <RefreshCw size={11} className="animate-spin text-white/70" />
@@ -140,13 +215,13 @@ export const OrderTrackingModal: React.FC = () => {
                     ? 'Successfully Delivered'
                     : isCancelled
                     ? 'Order Cancelled'
-                    : `Rapid Delivery: Arriving in ~${trackingData?.estimatedDeliveryMinutes || activeOrder.etaMinutes} Mins`}
+                    : `Rapid 10-Min Delivery: Arriving in ~${liveEta} Mins`}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setIsTrackingOpen(false)}
-              className="p-1.5 rounded-full hover:bg-white/10 text-white"
+              className="p-1.5 rounded-full hover:bg-white/10 text-white transition-colors"
             >
               <X size={18} />
             </button>
@@ -209,7 +284,7 @@ export const OrderTrackingModal: React.FC = () => {
               </div>
             </div>
 
-            {/* View 1: Real-Time Leaflet Road Map */}
+            {/* View 1: Real-Time Leaflet Road Map with SSE coordinates */}
             {viewMode === 'MAP' && (
               <div className="space-y-3">
                 <LiveDeliveryMap
@@ -217,8 +292,12 @@ export const OrderTrackingModal: React.FC = () => {
                   customerAddress={activeOrder.address}
                   riderName={trackingData?.assignedRiderName || activeOrder.riderName}
                   riderVehicle={trackingData?.assignedRiderVehicle || 'Hero Electric NYX EV'}
+                  riderLocation={liveLocation}
+                  speedKmh={liveSpeed}
                   isDelivered={isDelivered}
-                  etaMinutes={trackingData?.estimatedDeliveryMinutes || activeOrder.etaMinutes}
+                  etaMinutes={liveEta}
+                  lastPingTime={lastTelemetryTimestamp || undefined}
+                  streamMode={streamMode}
                 />
 
                 {/* Rider Card */}
@@ -237,7 +316,7 @@ export const OrderTrackingModal: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-[10px] text-brand-muted">
-                        Nexora EV Fleet • {trackingData?.assignedRiderVehicle || 'Electric EV'}
+                        Nexora EV Fleet • {trackingData?.assignedRiderVehicle || 'Hero Electric NYX EV'}
                       </p>
                     </div>
                   </div>
