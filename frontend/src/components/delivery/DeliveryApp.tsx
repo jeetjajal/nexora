@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { ApiClient, RiderShiftVerificationStatus } from '@/lib/api-client';
+import { LiveDeliveryMap } from '@/components/customer/LiveDeliveryMap';
+import { MobileBridge } from '@/lib/mobile-bridge';
 import {
   Power,
   MapPin,
@@ -29,6 +31,11 @@ import {
   Lock,
   Unlock,
   RefreshCw,
+  Check,
+  X,
+  ChevronRight,
+  PackageCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const DeliveryApp: React.FC = () => {
@@ -196,6 +203,33 @@ export const DeliveryApp: React.FC = () => {
     }
   };
 
+  // Web Audio chime for incoming trip dispatch
+  const playIncomingAlertChime = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch {}
+  };
+
+  // Order Acceptance & Trip Progression States
+  const [acceptedOrderIds, setAcceptedOrderIds] = useState<string[]>([]);
+  const [declinedOrderIds, setDeclinedOrderIds] = useState<string[]>([]);
+  const [tripStage, setTripStage] = useState<'STORE_PICKUP' | 'OUT_FOR_DELIVERY' | 'ARRIVED_DOORSTEP' | 'COMPLETED'>('STORE_PICKUP');
+  const [countdownSeconds, setCountdownSeconds] = useState<number>(45);
+
   const earningsData = {
     TODAY: { earnings: '₹840.00', trips: 14, tips: '₹120', onTime: '99.4%', hours: '5.2 hrs' },
     WEEK: { earnings: '₹5,420.00', trips: 86, tips: '₹650', onTime: '99.1%', hours: '34 hrs' },
@@ -204,7 +238,7 @@ export const DeliveryApp: React.FC = () => {
   };
 
   const currentOrder = activeOrder || (demoOrderActive ? {
-    id: 'NX-9042-DEMO',
+    id: 'NX-250900',
     items: [
       { product: { id: '1', name: 'Amul Taaza Milk 1L', price: 54, unit: '1 L' }, quantity: 2 },
       { product: { id: '3', name: 'Aashirvaad Shudh Atta 5kg', price: 245, unit: '5 kg' }, quantity: 1 }
@@ -214,17 +248,100 @@ export const DeliveryApp: React.FC = () => {
     handlingFee: 5,
     discount: 0,
     finalTotal: 373,
-    address: 'Flat 402, Shivalik High Street, Near Judges Bungalow, Bodakdev, Ahmedabad',
-    status: 'OUT_FOR_DELIVERY' as const,
+    address: 'B-402, Shivalik Residency, Near SG Highway, Bodakdev, Ahmedabad - 380054',
+    status: (tripStage === 'COMPLETED' ? 'DELIVERED' : tripStage === 'OUT_FOR_DELIVERY' || tripStage === 'ARRIVED_DOORSTEP' ? 'OUT_FOR_DELIVERY' : 'PLACED') as any,
     riderName: riderForm.fullName,
     riderPhone: `+91 ${riderForm.mobile}`,
     riderRating: riderRating,
     etaMinutes: 8,
-    deliveryOtp: '4920',
+    deliveryOtp: '1225',
     darkStore: 'Nexora Dark Store #04 (SG Highway)',
     paymentMethod: 'UPI / Online Paid',
     createdAt: new Date().toISOString()
   } : null);
+
+  const isOrderAccepted = currentOrder ? acceptedOrderIds.includes(currentOrder.id) : false;
+  const isOrderDeclined = currentOrder ? declinedOrderIds.includes(currentOrder.id) : false;
+
+  // Auto-countdown timer & audio alert for incoming delivery order requests
+  useEffect(() => {
+    if (!currentOrder || isOrderAccepted || isOrderDeclined || currentOrder.status === 'DELIVERED') {
+      return;
+    }
+
+    playIncomingAlertChime();
+    MobileBridge.triggerHaptic('warning').catch(() => {});
+    setCountdownSeconds(45);
+
+    const interval = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setDeclinedOrderIds((declined) => (currentOrder ? [...declined, currentOrder.id] : declined));
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentOrder?.id, isOrderAccepted, isOrderDeclined]);
+
+  // Synchronize trip stage when activeOrder updates
+  useEffect(() => {
+    if (activeOrder) {
+      if (activeOrder.status === 'DELIVERED') {
+        setTripStage('COMPLETED');
+      } else if (activeOrder.status === 'OUT_FOR_DELIVERY' && tripStage === 'STORE_PICKUP') {
+        setTripStage('OUT_FOR_DELIVERY');
+      }
+    }
+  }, [activeOrder?.status]);
+
+  const handleAcceptOrder = () => {
+    if (!currentOrder) return;
+    setAcceptedOrderIds((prev) => [...prev, currentOrder.id]);
+    setTripStage('STORE_PICKUP');
+    setBagChecked(false);
+    setInputOtp('');
+    setOtpSuccess(false);
+    setOtpError('');
+    MobileBridge.triggerHaptic('success').catch(() => {});
+    if (activeOrder && activeOrder.status === 'PLACED') {
+      updateOrderStatus('STORE_PICKING');
+    }
+  };
+
+  const handleDeclineOrder = () => {
+    if (!currentOrder) return;
+    setDeclinedOrderIds((prev) => [...prev, currentOrder.id]);
+    setDemoOrderActive(false);
+    MobileBridge.triggerHaptic('error').catch(() => {});
+  };
+
+  const handleConfirmPickup = () => {
+    if (!bagChecked) return;
+    setTripStage('OUT_FOR_DELIVERY');
+    updateOrderStatus('OUT_FOR_DELIVERY');
+    MobileBridge.triggerHaptic('medium').catch(() => {});
+  };
+
+  const handleArrivedAtDoorstep = () => {
+    setTripStage('ARRIVED_DOORSTEP');
+    MobileBridge.triggerHaptic('success').catch(() => {});
+  };
+
+  const handleResetForNextTrip = () => {
+    if (currentOrder) {
+      setDeclinedOrderIds((prev) => [...prev, currentOrder.id]);
+    }
+    setDemoOrderActive(false);
+    setBagChecked(false);
+    setInputOtp('');
+    setOtpSuccess(false);
+    setOtpError('');
+    setTripStage('STORE_PICKUP');
+  };
 
 
 
@@ -294,14 +411,24 @@ export const DeliveryApp: React.FC = () => {
         await ApiClient.verifyDeliveryOtp(activeOrder.id, inputOtp.trim());
       }
       setOtpSuccess(true);
+      setTripStage('COMPLETED');
       updateOrderStatus('DELIVERED');
+      MobileBridge.triggerHaptic('success').catch(() => {});
     } catch {
       // Local fallback for test verification
-      if (inputOtp.trim() === currentOrder.deliveryOtp || inputOtp.trim() === '1234' || inputOtp.trim() === '4920') {
+      if (
+        inputOtp.trim() === currentOrder.deliveryOtp ||
+        inputOtp.trim() === '1225' ||
+        inputOtp.trim() === '1234' ||
+        inputOtp.trim() === '4920'
+      ) {
         setOtpSuccess(true);
+        setTripStage('COMPLETED');
         updateOrderStatus('DELIVERED');
+        MobileBridge.triggerHaptic('success').catch(() => {});
       } else {
         setOtpError(`Incorrect OTP "${inputOtp}". Enter the code from the customer.`);
+        MobileBridge.triggerHaptic('error').catch(() => {});
       }
     } finally {
       setIsVerifying(false);
@@ -546,21 +673,248 @@ export const DeliveryApp: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Active Delivery Trip Card with Live Map Radar */}
-      {currentOrder ? (
-        <div className="bg-white rounded-card border-2 border-brand-primary shadow-modal overflow-hidden">
-          <div className="bg-brand-primary text-white p-3.5 sm:p-4 flex items-center justify-between">
+      {/* 3. Delivery Section: 3 Modes (Incoming Request Offer, Active Trip with Live Map, Standby) */}
+      {currentOrder && !isOrderAccepted && !isOrderDeclined && currentOrder.status !== 'DELIVERED' ? (
+        /* MODE A: Incoming Order Request Card with Accept / Decline */
+        <div className="bg-white rounded-card border-2 border-amber-400 shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-gradient-to-r from-amber-600 via-emerald-700 to-brand-primary text-white p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#D8F36A] animate-ping shrink-0" />
+              <h3 className="text-sm sm:text-base font-black tracking-tight flex items-center gap-1.5">
+                <span>🚨 Incoming Delivery Order Request</span>
+                <span className="text-xs bg-black/30 font-mono px-2 py-0.5 rounded-full text-white/90">
+                  #{currentOrder.id}
+                </span>
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-amber-400 text-black px-2.5 py-0.5 rounded-full font-black animate-pulse">
+                ⏱ {countdownSeconds}s to accept
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6 space-y-4">
+            {/* Payout & Distance Bar */}
+            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] text-emerald-800 font-extrabold uppercase tracking-wider block">
+                  Guaranteed Trip Payout
+                </span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-800">₹80.00</span>
+                  <span className="text-[11px] text-emerald-700 font-bold">(₹60 Delivery Fee + ₹20 Tip)</span>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-emerald-800 font-extrabold uppercase tracking-wider block">
+                  Est. Distance &amp; ETA
+                </span>
+                <span className="text-base sm:text-lg font-black text-emerald-900">1.8 km &bull; ~8 mins</span>
+              </div>
+            </div>
+
+            {/* Route Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="bg-brand-bg p-3.5 rounded-card border border-brand-border">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-brand-primary block mb-1">
+                  1. Pickup &bull; Dark Store
+                </span>
+                <h4 className="text-xs font-bold text-brand-text">Nexora Dark Store #04</h4>
+                <p className="text-[11px] text-brand-muted mt-0.5">
+                  Ground Floor, Shapath V, SG Highway, Ahmedabad
+                </p>
+                <span className="inline-block mt-2 text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                  Tamper-proof bag sealed &bull; Ready at dispatch counter
+                </span>
+              </div>
+
+              <div className="bg-brand-bg p-3.5 rounded-card border border-brand-border">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-brand-primary block mb-1">
+                  2. Drop Location &bull; Customer Doorstep
+                </span>
+                <h4 className="text-xs font-bold text-brand-text">Customer Drop Location</h4>
+                <p className="text-[11px] text-brand-muted mt-0.5">{currentOrder.address}</p>
+                <span className="inline-block mt-2 text-[10px] bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded">
+                  Customer Doorstep PIN Verification Required at Handover
+                </span>
+              </div>
+            </div>
+
+            {/* Order Items Preview */}
+            <div className="p-3 bg-white border border-brand-border rounded-lg text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <PackageCheck size={16} className="text-brand-primary shrink-0" />
+                <span className="font-bold text-brand-text">
+                  {currentOrder.items.length} Items:
+                </span>
+                <span className="text-brand-muted text-[11px]">
+                  {currentOrder.items.map((it) => `${it.quantity}x ${it.product.name}`).join(', ')}
+                </span>
+              </div>
+              <span className="text-[11px] font-bold text-brand-primary bg-brand-bg px-2 py-0.5 rounded">
+                {currentOrder.paymentMethod || 'Online Paid'}
+              </span>
+            </div>
+
+            {/* Prominent Accept / Decline Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleDeclineOrder}
+                className="w-full sm:w-auto py-3.5 px-6 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-black text-xs sm:text-sm rounded-button transition-all active:scale-98 flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <X size={16} />
+                <span>Decline Order</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAcceptOrder}
+                className="w-full sm:flex-1 py-3.5 px-8 bg-[#176B45] hover:bg-[#125335] text-white font-black text-sm rounded-button transition-all shadow-lg active:scale-98 flex items-center justify-center gap-2 group"
+              >
+                <Check size={18} className="text-[#D8F36A] group-hover:scale-110 transition-transform" />
+                <span>Accept Delivery Trip (₹80.00 Payout)</span>
+                <ChevronRight size={16} className="text-white/70" />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : currentOrder && isOrderAccepted ? (
+        /* MODE B: Active Accepted Delivery Trip with Live Route Map & Stages */
+        <div className="bg-white rounded-card border-2 border-brand-primary shadow-modal overflow-hidden animate-in fade-in">
+          {/* Top Trip Header */}
+          <div className="bg-brand-primary text-white p-3.5 sm:p-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-brand-accent animate-ping" />
               <h3 className="text-sm sm:text-base font-black">Active Delivery Trip #{currentOrder.id}</h3>
             </div>
-            <span className="text-xs bg-brand-accent text-brand-text px-2.5 py-0.5 rounded-full font-black uppercase">
-              {currentOrder.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-brand-accent text-brand-text px-2.5 py-0.5 rounded-full font-black uppercase">
+                {tripStage === 'STORE_PICKUP'
+                  ? 'Step 1: Store Pickup'
+                  : tripStage === 'OUT_FOR_DELIVERY'
+                  ? 'Step 2: Out for Delivery'
+                  : tripStage === 'ARRIVED_DOORSTEP'
+                  ? 'Step 3: At Doorstep'
+                  : 'Delivered'}
+              </span>
+            </div>
           </div>
 
           <div className="p-4 sm:p-5 space-y-4">
-            {/* Live GPS Radar & Route Details */}
+            {/* 3-Step Visual Progress Stepper */}
+            <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-bold">
+              <div className={`p-2 rounded-lg border transition-colors ${
+                tripStage === 'STORE_PICKUP'
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/30'
+                  : 'bg-emerald-100/60 border-emerald-300 text-emerald-700'
+              }`}>
+                <span className="block font-black">1. Dark Store</span>
+                <span className="text-[9px] text-emerald-600">
+                  {tripStage === 'STORE_PICKUP' ? 'Collect Bag' : '✓ Picked Up'}
+                </span>
+              </div>
+
+              <div className={`p-2 rounded-lg border transition-colors ${
+                tripStage === 'OUT_FOR_DELIVERY'
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-500/30'
+                  : tripStage === 'ARRIVED_DOORSTEP' || tripStage === 'COMPLETED'
+                  ? 'bg-emerald-100/60 border-emerald-300 text-emerald-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-500'
+              }`}>
+                <span className="block font-black">2. Live Ride</span>
+                <span className="text-[9px]">
+                  {tripStage === 'OUT_FOR_DELIVERY' ? 'In-Transit' : tripStage === 'ARRIVED_DOORSTEP' || tripStage === 'COMPLETED' ? '✓ Reached' : 'Pending'}
+                </span>
+              </div>
+
+              <div className={`p-2 rounded-lg border transition-colors ${
+                tripStage === 'ARRIVED_DOORSTEP'
+                  ? 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-500/30 animate-pulse'
+                  : tripStage === 'COMPLETED'
+                  ? 'bg-emerald-100/60 border-emerald-300 text-emerald-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-500'
+              }`}>
+                <span className="block font-black">3. Final OTP</span>
+                <span className="text-[9px]">
+                  {tripStage === 'COMPLETED' ? '✓ Completed' : tripStage === 'ARRIVED_DOORSTEP' ? 'Enter PIN' : 'Doorstep'}
+                </span>
+              </div>
+            </div>
+
+            {/* Embedded Live Map Tracking User & Rider Location */}
+            <div className="rounded-xl overflow-hidden border border-brand-border shadow-sm">
+              <div className="bg-zinc-900 text-white p-2.5 px-3 flex items-center justify-between text-xs font-bold">
+                <div className="flex items-center gap-2">
+                  <Navigation size={14} className="text-[#D8F36A] animate-pulse" />
+                  <span>Live Delivery Map &amp; Real-Time Route Radar</span>
+                </div>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  Ahmedabad Hub #04 &rarr; Bodakdev (1.8 km)
+                </span>
+              </div>
+              <LiveDeliveryMap
+                storeLocation={{ lat: 23.0373, lng: 72.5118 }}
+                customerLocation={{ lat: 23.0315, lng: 72.5072 }}
+                riderLocation={lastCoords || { lat: 23.0350, lng: 72.5100 }}
+                storeName="Nexora Dark Store #04"
+                customerAddress={currentOrder.address}
+                riderName={riderForm.fullName}
+                riderVehicle={riderForm.vehicleType}
+                isDelivered={currentOrder.status === 'DELIVERED'}
+                isRiderOnline={isOnDuty}
+                lastPingTime={new Date()}
+                etaMinutes={tripStage === 'ARRIVED_DOORSTEP' ? 0 : tripStage === 'OUT_FOR_DELIVERY' ? 5 : 8}
+                speedKmh={lastCoords?.speed || 24.5}
+                streamMode="SSE"
+              />
+            </div>
+
+            {/* Live GPS Telemetry Sharing Control */}
+            <div className="bg-[#f4f9f4] border border-[#cbe4cd] p-3.5 rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-xs ${
+                  isGpsSharing && gpsStatus === 'ACTIVE'
+                    ? 'bg-emerald-600 text-white animate-pulse'
+                    : 'bg-slate-200 text-slate-700'
+                }`}>
+                  <Radio size={16} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-brand-text flex items-center gap-1.5">
+                    <span>Live GPS Telemetry Sharing</span>
+                    {isGpsSharing && gpsStatus === 'ACTIVE' && (
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                        Transmitting
+                      </span>
+                    )}
+                  </h4>
+                  <p className="text-[10px] text-brand-muted">
+                    {gpsStatus === 'ACTIVE' && lastCoords
+                      ? `Beacon: ${lastCoords.lat.toFixed(4)}, ${lastCoords.lng.toFixed(4)} • Speed: ${lastCoords.speed || 24.5} km/h`
+                      : gpsStatus === 'DENIED'
+                      ? 'GPS permission denied in browser'
+                      : 'Broadcasting live coordinates to customer tracker via SSE / WebSocket'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsGpsSharing(!isGpsSharing)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5 ${
+                  isGpsSharing
+                    ? 'bg-brand-primary text-white hover:bg-brand-primaryHover'
+                    : 'bg-white border border-brand-border text-brand-muted hover:text-brand-text'
+                }`}
+              >
+                <Wifi size={12} />
+                <span>{isGpsSharing ? 'Sharing On' : 'Start Sharing'}</span>
+              </button>
+            </div>
+
+            {/* Quick Actions (Call, Google Maps) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               {/* Pickup Point */}
               <div className="bg-brand-bg p-3.5 rounded-card border border-brand-border">
@@ -578,7 +932,7 @@ export const DeliveryApp: React.FC = () => {
 
               {/* Delivery Point */}
               <div className="bg-brand-bg p-3.5 rounded-card border border-brand-border">
-                <span className="text-[10px] uppercase tracking-wider font-extrabold text-brand-text block mb-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-brand-primary block mb-1">
                   2. Drop Location &bull; Customer Doorstep
                 </span>
                 <h4 className="text-xs font-bold text-brand-text">Customer Drop Location</h4>
@@ -605,73 +959,75 @@ export const DeliveryApp: React.FC = () => {
               </div>
             </div>
 
-            {/* Real-time Rider GPS Location Sharing Control */}
-            <div className="bg-[#f4f9f4] border border-[#cbe4cd] p-3.5 rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-xs ${
-                  isGpsSharing && gpsStatus === 'ACTIVE'
-                    ? 'bg-emerald-600 text-white animate-pulse'
-                    : 'bg-slate-200 text-slate-700'
-                }`}>
-                  <Radio size={16} />
+            {/* STAGE-SPECIFIC INTERACTIVE ACTIONS */}
+            {tripStage === 'STORE_PICKUP' ? (
+              /* Stage 1: Collect bag at dark store */
+              <div className="bg-white p-4 rounded-card border border-brand-border space-y-3 shadow-xs">
+                <div className="flex items-center gap-2 text-xs font-bold text-brand-text">
+                  <PackageCheck size={18} className="text-brand-primary" />
+                  <span>Dark Store Bag Collection</span>
                 </div>
-                <div>
-                  <h4 className="text-xs font-black text-brand-text flex items-center gap-1.5">
-                    <span>Live GPS Telemetry Sharing</span>
-                    {isGpsSharing && gpsStatus === 'ACTIVE' && (
-                      <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
-                        Transmitting
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-[10px] text-brand-muted">
-                    {gpsStatus === 'ACTIVE' && lastCoords
-                      ? `Beacon: ${lastCoords.lat.toFixed(4)}, ${lastCoords.lng.toFixed(4)} • Speed: ${lastCoords.speed || 24.5} km/h`
-                      : gpsStatus === 'DENIED'
-                      ? 'GPS permission denied in browser'
-                      : 'Stream coordinates to customer order tracker via SSE/WebSocket'}
-                  </p>
-                </div>
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-brand-text bg-brand-bg p-3 rounded-lg border border-brand-border">
+                  <input
+                    type="checkbox"
+                    checked={bagChecked}
+                    onChange={(e) => setBagChecked(e.target.checked)}
+                    className="rounded border-brand-border text-brand-primary focus:ring-brand-primary w-4 h-4 cursor-pointer"
+                  />
+                  <span>I have collected the sealed tamper-proof bag &amp; verified {currentOrder.items.length} items</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmPickup}
+                  disabled={!bagChecked}
+                  className="w-full py-3.5 bg-brand-primary hover:bg-brand-primaryHover text-white font-black text-sm rounded-button transition-all shadow-md active:scale-98 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Bike size={18} className="text-[#D8F36A]" />
+                  <span>Confirm Bag Pickup &amp; Start Delivery Ride 🛵</span>
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setIsGpsSharing(!isGpsSharing)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs shrink-0 flex items-center gap-1.5 ${
-                  isGpsSharing
-                    ? 'bg-brand-primary text-white hover:bg-brand-primaryHover'
-                    : 'bg-white border border-brand-border text-brand-muted hover:text-brand-text'
-                }`}
-              >
-                <Wifi size={12} />
-                <span>{isGpsSharing ? 'Sharing On' : 'Start Sharing'}</span>
-              </button>
-            </div>
-
-            {/* Checklist */}
-            <div className="bg-white p-3 rounded-card border border-brand-border">
-              <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-brand-text">
-                <input
-                  type="checkbox"
-                  checked={bagChecked}
-                  onChange={(e) => setBagChecked(e.target.checked)}
-                  className="rounded border-brand-border text-brand-primary focus:ring-brand-primary w-4 h-4 cursor-pointer"
-                />
-                <span>I have collected the sealed tamper-proof bag &amp; verified {currentOrder.items.length} items</span>
-              </label>
-            </div>
-
-            {/* Action State: Deliver with OTP */}
-            {currentOrder.status !== 'DELIVERED' ? (
-              <div className="bg-[#f0f9f3] p-4 rounded-card border border-brand-primary/30 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <h4 className="text-xs font-black text-brand-primary uppercase tracking-wider">
-                    Enter Customer 4-Digit Delivery OTP
+            ) : tripStage === 'OUT_FOR_DELIVERY' ? (
+              /* Stage 2: En route / in transit to customer */
+              <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-card space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Navigation size={14} className="text-emerald-700 animate-spin" />
+                    <span>En Route to Customer Doorstep</span>
                   </h4>
-                  <span className="text-[10px] text-brand-muted">
-                    Doorstep OTP: <strong className="text-brand-text">{currentOrder.deliveryOtp || '4920'}</strong>
+                  <span className="text-xs font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    ETA: ~5 mins
                   </span>
                 </div>
+                <p className="text-xs text-emerald-800">
+                  Follow live route to <strong className="text-brand-text">{currentOrder.address}</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleArrivedAtDoorstep}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-button transition-all shadow-md active:scale-98 flex items-center justify-center gap-2"
+                >
+                  <MapPin size={18} />
+                  <span>I Have Arrived at Customer Doorstep 📍</span>
+                </button>
+              </div>
+            ) : tripStage === 'ARRIVED_DOORSTEP' ? (
+              /* Stage 3: Ride complete - Final OTP Verification */
+              <div className="bg-[#f0f9f3] p-4 rounded-card border-2 border-brand-primary space-y-3 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 size={16} className="text-brand-primary shrink-0" />
+                    <h4 className="text-xs sm:text-sm font-black text-brand-primary uppercase tracking-wider">
+                      Arrived at Doorstep &bull; Enter Final Delivery OTP
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-brand-muted bg-white px-2.5 py-1 rounded-full border border-brand-border font-bold">
+                    Customer PIN: <strong className="text-brand-text font-mono text-xs">{currentOrder.deliveryOtp || '1225'}</strong>
+                  </span>
+                </div>
+                <p className="text-[11px] text-brand-muted">
+                  Ask the customer for their 4-digit PIN shown on their order tracking screen to finalize handover.
+                </p>
 
                 <div className="flex gap-2">
                   <input
@@ -679,7 +1035,7 @@ export const DeliveryApp: React.FC = () => {
                     maxLength={4}
                     value={inputOtp}
                     onChange={(e) => setInputOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="4-digit OTP"
+                    placeholder="4-digit PIN"
                     className="flex-1 px-3 py-2.5 text-base font-mono font-black tracking-widest text-center bg-white border border-brand-border rounded-input focus:outline-none focus:ring-2 focus:ring-brand-primary"
                   />
                   <button
@@ -687,7 +1043,7 @@ export const DeliveryApp: React.FC = () => {
                     disabled={isVerifying || inputOtp.length !== 4}
                     className="px-5 sm:px-6 py-2.5 bg-brand-primary hover:bg-brand-primaryHover text-white font-black text-xs rounded-button transition-all shadow-card disabled:opacity-50 active:scale-98"
                   >
-                    {isVerifying ? 'Verifying...' : 'Verify & Complete'}
+                    {isVerifying ? 'Verifying...' : 'Verify & Complete Delivery'}
                   </button>
                 </div>
 
@@ -698,19 +1054,29 @@ export const DeliveryApp: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-card text-center text-emerald-800 animate-in fade-in space-y-2">
-                <CheckCircle2 size={36} className="mx-auto text-emerald-600 mb-1" />
-                <h4 className="text-sm font-black">Delivery Completed Successfully!</h4>
+              /* Completed State */
+              <div className="bg-emerald-50 border border-emerald-300 p-5 rounded-card text-center text-emerald-800 animate-in fade-in space-y-3">
+                <CheckCircle2 size={40} className="mx-auto text-emerald-600 mb-1" />
+                <h4 className="text-base font-black">Delivery Completed Successfully!</h4>
                 <p className="text-xs">₹60 delivery fee + ₹20 tip credited to Ramesh&apos;s wallet.</p>
                 <p className="text-[11px] text-emerald-700 font-bold">
                   Customer feedback prompt opened &bull; Rider rating updated!
                 </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleResetForNextTrip}
+                    className="px-6 py-2.5 bg-brand-primary hover:bg-brand-primaryHover text-white font-black text-xs rounded-button shadow-md transition-all active:scale-98"
+                  >
+                    Ready for Next Delivery Trip 🚀
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
       ) : (
-        /* Standby State with 1-Click Demo Launcher */
+        /* MODE C: Standby State with 1-Click Demo Launcher */
         <div className="bg-white rounded-card border border-brand-border p-6 sm:p-8 text-center shadow-card space-y-4">
           <Clock size={36} className="mx-auto text-brand-primary opacity-60" />
           <div>
@@ -718,13 +1084,20 @@ export const DeliveryApp: React.FC = () => {
               Waiting for New Delivery Assignment
             </h3>
             <p className="text-xs text-brand-muted max-w-sm mx-auto">
-              You are online and prioritized for immediate orders dispatched within 3 km of Dark Store #04.
+              {isOrderDeclined
+                ? 'Order offer was declined. You are active and waiting for new trip dispatches within 3 km.'
+                : 'You are online and prioritized for immediate orders dispatched within 3 km of Dark Store #04.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <button
-              onClick={() => setDemoOrderActive(true)}
+              onClick={() => {
+                setDeclinedOrderIds([]);
+                setAcceptedOrderIds([]);
+                setTripStage('STORE_PICKUP');
+                setDemoOrderActive(true);
+              }}
               className="px-4 py-2 bg-brand-primary text-white text-xs font-black rounded-button hover:bg-brand-primaryHover transition-all inline-flex items-center gap-1.5 shadow-sm active:scale-98"
             >
               <Sparkles size={14} className="text-brand-accent" />
