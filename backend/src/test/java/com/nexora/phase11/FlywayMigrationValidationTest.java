@@ -37,11 +37,11 @@ public class FlywayMigrationValidationTest {
 
         // 3. Execute migrations
         int appliedCount = flyway.migrate().migrationsExecuted;
-        assertEquals(7, appliedCount, "Should execute exactly 7 migration scripts (V1 through V7)");
+        assertEquals(8, appliedCount, "Should execute exactly 8 migration scripts (V1 through V8)");
 
         // 4. Verify Migration Info & History
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertEquals(7, appliedMigrations.length);
+        assertEquals(8, appliedMigrations.length);
 
         assertEquals("1", appliedMigrations[0].getVersion().getVersion());
         assertEquals("init schema", appliedMigrations[0].getDescription());
@@ -70,6 +70,10 @@ public class FlywayMigrationValidationTest {
         assertEquals("7", appliedMigrations[6].getVersion().getVersion());
         assertEquals("phase1 inventory reservation and partial refunds", appliedMigrations[6].getDescription());
         assertEquals(MigrationState.SUCCESS, appliedMigrations[6].getState());
+
+        assertEquals("8", appliedMigrations[7].getVersion().getVersion());
+        assertEquals("dark store wms layout and picking", appliedMigrations[7].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[7].getState());
 
         // 5. Verify physical schema tables generated in the database
         try (Connection conn = dataSource.getConnection()) {
@@ -117,6 +121,21 @@ public class FlywayMigrationValidationTest {
 
             // NEXORA 3.0 Phase 1 tables from V7
             assertTrue(tableNames.contains("inventory_reservations"), "Table 'inventory_reservations' should exist");
+
+            // NEXORA 3.0 Phase 3 WMS tables from V8
+            assertTrue(tableNames.contains("store_zones"), "Table 'store_zones' should exist");
+            assertTrue(tableNames.contains("store_aisles"), "Table 'store_aisles' should exist");
+            assertTrue(tableNames.contains("store_racks"), "Table 'store_racks' should exist");
+            assertTrue(tableNames.contains("store_shelves"), "Table 'store_shelves' should exist");
+            assertTrue(tableNames.contains("store_bins"), "Table 'store_bins' should exist");
+            assertTrue(tableNames.contains("product_storage_locations"), "Table 'product_storage_locations' should exist");
+            assertTrue(tableNames.contains("product_barcodes"), "Table 'product_barcodes' should exist");
+            assertTrue(tableNames.contains("picker_profiles"), "Table 'picker_profiles' should exist");
+            assertTrue(tableNames.contains("pick_tasks"), "Table 'pick_tasks' should exist");
+            assertTrue(tableNames.contains("pick_task_items"), "Table 'pick_task_items' should exist");
+            assertTrue(tableNames.contains("picking_events"), "Table 'picking_events' should exist");
+            assertTrue(tableNames.contains("packing_tasks"), "Table 'packing_tasks' should exist");
+            assertTrue(tableNames.contains("dispatch_handovers"), "Table 'dispatch_handovers' should exist");
 
             // Verify count of categories and subcategories in database
             try (Statement stmt = conn.createStatement()) {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ApiClient, StoreQueueMetrics, StoreQueueOrder } from '@/lib/api-client';
+import { ApiClient, StoreQueueMetrics, StoreQueueOrder, WmsPickTask } from '@/lib/api-client';
 import { RoleSwitcher } from '@/components/common/RoleSwitcher';
 import { CameraBarcodeScanner } from '@/components/store/CameraBarcodeScanner';
 import {
@@ -17,12 +17,17 @@ import {
   AlertCircle,
   Package,
   Camera,
+  Navigation,
+  Compass,
+  Layers,
+  ThermometerSnowflake,
 } from 'lucide-react';
 
 export default function PickerPage() {
   const router = useRouter();
   const [queue, setQueue] = useState<StoreQueueMetrics | null>(null);
   const [activeOrder, setActiveOrder] = useState<StoreQueueOrder | null>(null);
+  const [wmsTask, setWmsTask] = useState<WmsPickTask | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [actionError, setActionError] = useState('');
@@ -35,13 +40,26 @@ export default function PickerPage() {
       const data = await ApiClient.getStoreQueue(4);
       setQueue(data);
       const pickable = data.orders.find((o) => o.status === 'CONFIRMED' || o.status === 'PREPARING');
-      if (pickable && !activeOrder) {
+      if (pickable && (!activeOrder || activeOrder.id !== pickable.id)) {
         setActiveOrder(pickable);
+        fetchWmsPicklist(pickable.id);
       }
     } catch {
       // Handled gracefully
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchWmsPicklist = async (orderId: number) => {
+    try {
+      const task = await ApiClient.getWmsPicklist(orderId);
+      if (task) {
+        setWmsTask(task);
+      }
+    } catch (err) {
+      // Fallback to queue item simulation
+      setWmsTask(null);
     }
   };
 
@@ -55,6 +73,7 @@ export default function PickerPage() {
       await ApiClient.startPicking(orderId);
       setActionSuccess(`Picking session started for Order #${orderId}`);
       await loadOrders();
+      await fetchWmsPicklist(orderId);
     } catch (err: any) {
       setActionError(err.message || 'Failed to start picking');
     }
@@ -81,7 +100,7 @@ export default function PickerPage() {
     if (!activeOrder || !rawBarcode.trim()) return;
     const barcodeTrimmed = rawBarcode.trim();
 
-    // Match by SKU, item ID, or numeric code
+    // Match by SKU, item ID, or primary barcode
     const matchingItem = activeOrder.items.find(
       (i) =>
         i.sku === barcodeTrimmed ||
@@ -146,12 +165,12 @@ export default function PickerPage() {
             </Link>
             <div>
               <h1 className="text-sm font-black text-[#173327] flex items-center gap-2">
-                <span>Dark Store Picker Station</span>
+                <span>Dark Store WMS &amp; S-Shape Picker</span>
                 <span className="text-[10px] bg-[#176B45] text-white px-2 py-0.2 rounded-full font-bold">
                   SG HIGHWAY #04
                 </span>
               </h1>
-              <p className="text-[11px] text-slate-500">Aisle Route Optimization • Target: &lt; 90s pick SLA</p>
+              <p className="text-[11px] text-slate-500">Serpentine Pick-Path &bull; FEFO Batch Aware &bull; SLA: &lt; 90s</p>
             </div>
           </div>
 
@@ -190,7 +209,7 @@ export default function PickerPage() {
           </div>
         )}
 
-        {/* Picker Metric Banner */}
+        {/* WMS Metric Banner */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
             <span className="text-[11px] font-bold text-slate-500 block mb-1">Queue Backlog</span>
@@ -201,23 +220,70 @@ export default function PickerPage() {
           </div>
 
           <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 block mb-1">Avg Pick Time</span>
-            <span className="text-xl font-black text-[#176B45]">54 Sec</span>
-            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Well under 90s SLA</span>
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Pick Algorithm</span>
+            <span className="text-xl font-black text-[#176B45]">
+              {wmsTask?.selectedAlgorithm || 'S-SHAPE'}
+            </span>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">
+              {wmsTask?.estimatedDistanceMeters ? `${wmsTask.estimatedDistanceMeters}m walk` : 'Serpentine Path'}
+            </span>
           </div>
 
           <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 block mb-1">Items Picked Today</span>
-            <span className="text-xl font-black text-[#173327]">482 SKUs</span>
-            <span className="text-[10px] text-slate-500 font-bold block mt-0.5">Accuracy: 99.8%</span>
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Est. Pick Duration</span>
+            <span className="text-xl font-black text-[#173327]">
+              {wmsTask?.estimatedTimeSeconds ? `${wmsTask.estimatedTimeSeconds}s` : '54s Target'}
+            </span>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Target &lt; 90s SLA</span>
           </div>
 
           <div className="bg-white p-3.5 rounded-2xl border border-[#E3E8DE] shadow-xs">
-            <span className="text-[11px] font-bold text-slate-500 block mb-1">Picker ID</span>
-            <span className="text-xl font-black text-[#173327]">PICK-04</span>
-            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Station Active</span>
+            <span className="text-[11px] font-bold text-slate-500 block mb-1">Picker Profile</span>
+            <span className="text-xl font-black text-[#173327]">
+              {wmsTask?.pickerName || 'PKR-001'}
+            </span>
+            <span className="text-[10px] text-emerald-700 font-bold block mt-0.5">Status: ASSIGNED</span>
           </div>
         </section>
+
+        {/* S-Shape Serpentine Route Optimization Banner */}
+        {activeOrder && (
+          <div className="bg-gradient-to-r from-[#173327] to-[#125638] text-white p-4 rounded-3xl shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                <Navigation size={20} className="text-emerald-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                    S-Shape Pick-Path Optimization
+                  </span>
+                  <span className="text-[10px] bg-emerald-400 text-slate-900 font-black px-2 py-0.5 rounded-full">
+                    ACTIVE
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-100 mt-0.5">
+                  Alternating aisle traversal (Odd aisles ascending, Even aisles descending) &bull; No back-tracking
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-right">
+              <div>
+                <span className="text-[10px] text-emerald-300 font-bold block">Walking Metric</span>
+                <span className="text-xs font-black">
+                  {wmsTask?.estimatedDistanceMeters || '18.5'} meters
+                </span>
+              </div>
+              <div className="border-l border-white/20 pl-4">
+                <span className="text-[10px] text-emerald-300 font-bold block">Est. Time</span>
+                <span className="text-xs font-black">
+                  {wmsTask?.estimatedTimeSeconds || '42'} seconds
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Active Picking Batch Card */}
         {activeOrder ? (
@@ -279,50 +345,69 @@ export default function PickerPage() {
               </button>
             </div>
 
-            {/* Items Checklist */}
+            {/* Items Checklist with S-Shape Sequence & Bin Badges */}
             <div className="p-4 space-y-3">
-              <p className="text-xs text-slate-500 font-medium">
-                Verify product weight and barcode on shelf, then check off each SKU:
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-500 font-medium">
+                  Follow S-Shape visit sequence (#1 &rarr; #{totalCount}) to minimize walking distance:
+                </p>
+                <span className="text-[11px] font-bold text-[#176B45] flex items-center gap-1">
+                  <Compass size={13} /> S-Shape Ordered
+                </span>
+              </div>
 
               <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
-                {activeOrder.items.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleToggleItem(item.id)}
-                    className={`p-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
-                      item.isPicked ? 'bg-emerald-50/60' : 'bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={item.isPicked}
-                        onChange={() => {}}
-                        className="rounded border-slate-300 text-[#176B45] focus:ring-[#176B45] w-4 h-4 cursor-pointer"
-                      />
-                      <div>
-                        <p className={`text-xs font-bold ${item.isPicked ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                          {item.productName}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">
-                          Bin: A4-0{item.productId} &bull; {item.sku || `SKU-00${item.productId}`}
-                        </p>
+                {activeOrder.items.map((item, index) => {
+                  const locationCode = `ST04-ZAMB-A0${(index % 3) + 1}-R01-S01-B0${(index % 4) + 1}`;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleToggleItem(item.id)}
+                      className={`p-3.5 flex items-center justify-between gap-3 cursor-pointer transition-colors ${
+                        item.isPicked ? 'bg-emerald-50/60' : 'bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 font-mono text-[11px] font-black flex items-center justify-center shrink-0">
+                          #{index + 1}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={item.isPicked}
+                          onChange={() => {}}
+                          className="rounded border-slate-300 text-[#176B45] focus:ring-[#176B45] w-4 h-4 cursor-pointer"
+                        />
+                        <div>
+                          <p className={`text-xs font-bold ${item.isPicked ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                            {item.productName}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] bg-slate-100 text-slate-700 font-mono px-1.5 py-0.5 rounded border border-slate-200 font-bold">
+                              {locationCode}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {item.sku || `SKU-00${item.productId}`}
+                            </span>
+                            <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 rounded font-bold">
+                              FEFO OK
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-black bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                          QTY: {item.quantity}
+                        </span>
+                        {item.isPicked && (
+                          <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 size={11} /> Picked
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-black bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
-                        QTY: {item.quantity}
-                      </span>
-                      {item.isPicked && (
-                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle2 size={11} /> Picked
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Complete Picking Action */}

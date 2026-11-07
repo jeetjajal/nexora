@@ -1,0 +1,15 @@
+package com.nexora.wms.enums;
+
+public enum PickingEventType {
+    SCAN_SUCCESS,
+    ITEM_PICKED,
+    WRONG_PRODUCT,
+    BARCODE_MISMATCH,
+    WRONG_STORE,
+    EXPIRED_BATCH,
+    EXPIRED_PRODUCT_BLOCKED,
+    EXCESS_QUANTITY,
+    UNKNOWN_BARCODE,
+    SHORTAGE_REPORTED,
+    DAMAGE_REPORTED
+}

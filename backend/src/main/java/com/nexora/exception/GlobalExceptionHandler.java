@@ -360,6 +360,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<Object>> handleBadRequest(
+            BadRequestException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     /**
      * Final safety net.
      *

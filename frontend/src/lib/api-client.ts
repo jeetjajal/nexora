@@ -1064,6 +1064,99 @@ export class ApiClient {
     }
     return json.data;
   }
+
+  // ==================== NEXORA 3.0 WMS METHODS ====================
+  static async getWmsStoreLayout(storeId: number, token?: string): Promise<WmsStoreLayout> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/stores/${storeId}/layout`, { headers, cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch store layout');
+    return json.data;
+  }
+
+  static async resolveWmsBarcode(storeId: number, barcode: string, token?: string): Promise<WmsBarcodeResolve> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/v1/wms/barcode/resolve', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ storeId, barcode }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to resolve barcode');
+    return json.data;
+  }
+
+  static async getWmsPicklist(orderId: number, token?: string): Promise<WmsPickTask> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/orders/${orderId}/picklist`, { headers, cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch picklist');
+    return json.data;
+  }
+
+  static async scanWmsPickItem(
+    itemId: number,
+    payload: { scannedBarcode: string; quantity: number; scannedBatchNumber?: string },
+    token?: string
+  ): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/picklist/items/${itemId}/scan`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to scan pick item');
+    return json.data;
+  }
+
+  static async completeWmsPacking(
+    orderId: number,
+    payload: { bagCode: string; qcPassed?: boolean },
+    token?: string
+  ): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/orders/${orderId}/packing/complete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to complete packing');
+    return json.data;
+  }
+
+  static async handoverWmsDispatch(
+    orderId: number,
+    payload: { deliveryPartnerId: number; bagCode: string },
+    token?: string
+  ): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/orders/${orderId}/dispatch/handover`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to dispatch handover');
+    return json.data;
+  }
+
+  static async getWmsDashboardMetrics(storeId: number, token?: string): Promise<WmsDashboardMetrics> {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/v1/wms/stores/${storeId}/dashboard/metrics`, { headers, cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message || 'Failed to fetch WMS metrics');
+    return json.data;
+  }
+
 }
 
 export interface RiderShiftVerificationStatus {
@@ -1432,4 +1525,112 @@ export interface ColdChainOverviewResponse {
     inBreach: boolean;
     lastUpdated: string;
   }[];
+}
+
+
+export interface WmsStoreLayout {
+  storeId: number;
+  storeName: string;
+  zones: {
+    zoneId: number;
+    zoneCode: string;
+    name: string;
+    temperatureType: string;
+    aisles: {
+      aisleId: number;
+      aisleCode: string;
+      aisleNumber: number;
+      direction: string;
+      isRestricted: boolean;
+      widthMeters: number;
+      lengthMeters: number;
+      bins: {
+        binId: number;
+        binCode: string;
+        fullLocationCode: string;
+        traversalSequence: number;
+        xCoord: number;
+        yCoord: number;
+        capacityUnits: number;
+        status: string;
+        rackCode: string;
+        shelfCode: string;
+        shelfLevel: number;
+      }[];
+    }[];
+  }[];
+}
+
+export interface WmsBarcodeResolve {
+  productId: number;
+  productName: string;
+  sku: string;
+  primaryBarcode: string;
+  price: number;
+  primaryBinCode: string;
+  availableStock: number;
+  availableBatches: {
+    batchId: number;
+    batchNumber: string;
+    expiryDate: string;
+    availableQuantity: number;
+    temperatureZone: string;
+    isQuarantined: boolean;
+  }[];
+}
+
+export interface WmsPickTask {
+  pickTaskId: number;
+  taskCode: string;
+  orderId: number;
+  storeId: number;
+  pickerId: number | null;
+  pickerName: string | null;
+  status: string;
+  totalItemsCount: number;
+  pickedItemsCount: number;
+  estimatedDistanceMeters: number;
+  estimatedTimeSeconds: number;
+  selectedAlgorithm: 'S_SHAPE' | 'NEAREST_NEIGHBOR';
+  assignedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  items: {
+    pickTaskItemId: number;
+    orderItemId: number;
+    productId: number;
+    productName: string;
+    sku: string;
+    primaryBarcode: string;
+    requiredQuantity: number;
+    pickedQuantity: number;
+    binId: number;
+    binLocationCode: string;
+    xCoord: number;
+    yCoord: number;
+    sequenceIndex: number;
+    batchId: number | null;
+    batchNumber: string | null;
+    expiryDate: string | null;
+    temperatureZone: string;
+    status: string;
+    scannedBarcode: string | null;
+    pickedAt: string | null;
+  }[];
+}
+
+export interface WmsDashboardMetrics {
+  storeId: number;
+  storeName: string;
+  activeDarkStoresCount: number;
+  pendingPickingOrdersCount: number;
+  inProgressPickingOrdersCount: number;
+  activePickersCount: number;
+  ordersAwaitingPackingCount: number;
+  ordersAwaitingDispatchCount: number;
+  averagePickingDurationSeconds: number;
+  averagePackingDurationSeconds: number;
+  pickingAccuracyPercentage: number;
+  missingItemRatePercentage: number;
+  expiredStockBlockedCount: number;
 }

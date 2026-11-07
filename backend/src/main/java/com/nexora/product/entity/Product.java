@@ -82,6 +82,12 @@ public class Product {
     @Builder.Default
     private boolean available = true;
 
+    @Column(length = 50)
+    private String sku;
+
+    @Column(name = "primary_barcode", length = 64)
+    private String primaryBarcode;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "product_categories",
