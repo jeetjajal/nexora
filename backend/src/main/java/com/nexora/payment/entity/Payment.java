@@ -68,6 +68,10 @@ public class Payment {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "refunded_amount", nullable = false, precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal refundedAmount = BigDecimal.ZERO;
+
     @Column(nullable = false, length = 10)
     @Builder.Default
     private String currency = "INR";

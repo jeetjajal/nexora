@@ -25,12 +25,12 @@ public class PaymentResponse {
     /**
      * The PUBLIC key id — safe to send to the frontend. This is how
      * Razorpay's Checkout.js widget is meant to be initialized
-     * client-side; it is NOT a secret (only razorpay.key-secret,
-     * which never leaves the backend, is sensitive).
+     * client-side; it is NOT a secret.
      */
     private String razorpayKeyId;
 
     private BigDecimal amount;
+    private BigDecimal refundedAmount;
     private String currency;
     private String status;
     private LocalDateTime createdAt;

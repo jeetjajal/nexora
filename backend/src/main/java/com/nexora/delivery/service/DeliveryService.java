@@ -19,6 +19,7 @@ import com.nexora.kafka.producer.KafkaEventProducer;
 import com.nexora.order.entity.Order;
 import com.nexora.order.entity.OrderStatus;
 import com.nexora.order.repository.OrderRepository;
+import com.nexora.store.entity.Store;
 import com.nexora.user.entity.User;
 import com.nexora.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -46,6 +49,7 @@ public class DeliveryService {
     private com.nexora.websocket.service.OrderTrackingWebSocketService orderTrackingWebSocketService;
 
     private static final double EARTH_RADIUS_KM = 6371.0;
+    private static final Pattern GEO_PATTERN = Pattern.compile("GEO:\\s*([0-9.-]+)\\s*,\\s*([0-9.-]+)");
 
     @Transactional
     public DeliveryPartnerProfileResponse getProfile(Long userId) {
@@ -107,35 +111,65 @@ public class DeliveryService {
         }
     }
 
+    /**
+     * PHASE 1 NEXORA 3.0: Accurate Dark-Store-Origin Rider Dispatch.
+     * Searches for available riders nearest to the *Dark Store pickup hub* (not customer address).
+     * Strictly enforces non-zero coordinates and rejects assigning (0,0) fallback riders.
+     */
     @Transactional
     public void assignNearestRider(Order order) {
+        // 1. Resolve authoritative Dark Store pickup coordinates FIRST
+        Store store = order.getStore();
+        Double storeLat = (store != null) ? store.getLatitude() : null;
+        Double storeLng = (store != null) ? store.getLongitude() : null;
+
+        if (storeLat == null || storeLng == null) {
+            double[] extracted = extractStoreCoordinates(store);
+            if (extracted != null) {
+                storeLat = extracted[0];
+                storeLng = extracted[1];
+            }
+        }
+
+        // Strict guard: Never dispatch from invalid, unverified, or (0,0) store coordinates
+        if (storeLat == null || storeLng == null || (Math.abs(storeLat) < 0.001 && Math.abs(storeLng) < 0.001)) {
+            log.warn("Cannot assign rider: Store #{} has missing/invalid coordinates. Aborting dispatch.",
+                    store != null ? store.getId() : "null");
+            return;
+        }
+
+        // 2. Fetch available online riders only after validating pickup origin
         List<DeliveryPartner> availablePartners = partnerRepository.findByStatusAndIsOnlineTrue(DeliveryPartnerStatus.AVAILABLE);
 
         if (availablePartners.isEmpty()) {
             log.warn("No available riders for order {}", order.getId());
-            return; // In a real system, we'd queue this and retry.
+            return;
         }
-
-        // Store doesn't have an address directly in this phase, using customer delivery address as approximation for test
-        double storeLat = order.getDeliveryAddress().getLatitude() != null ? order.getDeliveryAddress().getLatitude() : 0.0;
-        double storeLng = order.getDeliveryAddress().getLongitude() != null ? order.getDeliveryAddress().getLongitude() : 0.0;
 
         DeliveryPartner nearestPartner = null;
         double minDistance = Double.MAX_VALUE;
 
+        // 2. Find closest rider to the Dark Store with verified non-zero GPS coordinates
         for (DeliveryPartner partner : availablePartners) {
-            if (partner.getCurrentLat() != null && partner.getCurrentLng() != null) {
-                double distance = calculateHaversineDistance(storeLat, storeLng, partner.getCurrentLat(), partner.getCurrentLng());
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestPartner = partner;
-                }
+            Double pLat = partner.getCurrentLat();
+            Double pLng = partner.getCurrentLng();
+
+            // Strict guard: ignore riders with unverified, missing, or (0,0) GPS telemetry
+            if (pLat == null || pLng == null || (Math.abs(pLat) < 0.001 && Math.abs(pLng) < 0.001)) {
+                continue;
+            }
+
+            double distance = calculateHaversineDistance(storeLat, storeLng, pLat, pLng);
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestPartner = partner;
             }
         }
 
         if (nearestPartner == null) {
-            // Fallback: pick the first one if no locations are known
-            nearestPartner = availablePartners.get(0);
+            log.warn("No riders with valid GPS coordinates available near store #{} for order #{}.",
+                    store != null ? store.getId() : "null", order.getId());
+            return;
         }
 
         nearestPartner.setStatus(DeliveryPartnerStatus.BUSY);
@@ -151,7 +185,8 @@ public class DeliveryService {
         order.setStatus(OrderStatus.RIDER_ASSIGNED);
         orderRepository.save(order);
         
-        log.info("Assigned rider {} to order {} at distance {} km", nearestPartner.getId(), order.getId(), minDistance);
+        log.info("Assigned nearest rider #{} to order #{} from Dark Store (distance: {} km)",
+                nearestPartner.getId(), order.getId(), String.format("%.2f", minDistance));
 
         // Phase 16: Publish RiderAssignedEvent
         try {
@@ -176,6 +211,37 @@ public class DeliveryService {
         } catch (Exception ex) {
             log.debug("WebSocket broadcast failed: {}", ex.getMessage());
         }
+    }
+
+    private double[] extractStoreCoordinates(Store store) {
+        if (store == null) return null;
+        if (store.getLatitude() != null && store.getLongitude() != null) {
+            return new double[]{store.getLatitude(), store.getLongitude()};
+        }
+        if (store.getDescription() != null) {
+            Matcher matcher = GEO_PATTERN.matcher(store.getDescription());
+            if (matcher.find()) {
+                try {
+                    return new double[]{Double.parseDouble(matcher.group(1)), Double.parseDouble(matcher.group(2))};
+                } catch (Exception ignored) {}
+            }
+        }
+        // Known Ahmedabad Dark Store hubs fallback by ID
+        if (store.getId() != null) {
+            if (store.getId() == 4L) return new double[]{23.0373, 72.5118};
+            if (store.getId() == 2L) return new double[]{23.0350, 72.5293};
+            if (store.getId() == 1L) return new double[]{23.0125, 72.5075};
+            if (store.getId() == 3L) return new double[]{23.0340, 72.4630};
+        }
+        // Known Ahmedabad Dark Store hubs fallback by Area Name
+        if (store.getName() != null) {
+            String nameLower = store.getName().toLowerCase();
+            if (nameLower.contains("vastrapur")) return new double[]{23.0358, 72.5293};
+            if (nameLower.contains("navrangpura") || nameLower.contains("central")) return new double[]{23.0365, 72.5611};
+            if (nameLower.contains("bopal")) return new double[]{23.0340, 72.4630};
+            if (nameLower.contains("prahlad") || nameLower.contains("nagar")) return new double[]{23.0125, 72.5075};
+        }
+        return null;
     }
 
     @Transactional
@@ -211,7 +277,6 @@ public class DeliveryService {
             assignment.setCompletedAt(LocalDateTime.now());
             partner.setStatus(DeliveryPartnerStatus.AVAILABLE);
             
-            // Add earnings (simple logic: fixed rate or based on order's delivery fee)
             BigDecimal deliveryFee = assignment.getOrder().getDeliveryFee() != null ? assignment.getOrder().getDeliveryFee() : BigDecimal.valueOf(5.0);
             partner.setTotalEarnings(partner.getTotalEarnings().add(deliveryFee));
             partnerRepository.save(partner);

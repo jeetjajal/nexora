@@ -11,13 +11,14 @@ public class PaymentMapper {
     public static PaymentResponse toResponse(Payment payment, String razorpayKeyId) {
         return PaymentResponse.builder()
                 .id(payment.getId())
-                .orderId(payment.getOrder().getId())
+                .orderId(payment.getOrder() != null ? payment.getOrder().getId() : null)
                 .razorpayOrderId(payment.getRazorpayOrderId())
                 .razorpayPaymentId(payment.getRazorpayPaymentId())
                 .razorpayKeyId(razorpayKeyId)
                 .amount(payment.getAmount())
+                .refundedAmount(payment.getRefundedAmount())
                 .currency(payment.getCurrency())
-                .status(payment.getStatus().name())
+                .status(payment.getStatus() != null ? payment.getStatus().name() : null)
                 .createdAt(payment.getCreatedAt())
                 .build();
     }

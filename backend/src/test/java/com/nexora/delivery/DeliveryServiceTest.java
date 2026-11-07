@@ -87,29 +87,93 @@ public class DeliveryServiceTest {
     }
 
     @Test
-    void assignNearestRider_choosesNearest() {
-        // Customer location: 0, 0
+    void assignNearestRider_choosesNearestToDarkStore() {
+        // Dark Store origin coordinates (Ahmedabad Central Hub)
+        Store store = Store.builder()
+                .id(1L)
+                .name("Ahmedabad Central Hub")
+                .latitude(23.0225)
+                .longitude(72.5714)
+                .build();
+
+        // Customer delivery address (far away)
         Address address = new Address();
-        address.setLatitude(0.0);
-        address.setLongitude(0.0);
+        address.setLatitude(23.0800);
+        address.setLongitude(72.6000);
         
         Order order = new Order();
         order.setId(50L);
+        order.setStore(store);
         order.setDeliveryAddress(address);
         
-        // Partner 1: 0.1, 0.1 (Near)
-        DeliveryPartner partner1 = DeliveryPartner.builder().id(1L).currentLat(0.1).currentLng(0.1).build();
-        // Partner 2: 1.0, 1.0 (Far)
-        DeliveryPartner partner2 = DeliveryPartner.builder().id(2L).currentLat(1.0).currentLng(1.0).build();
+        // Partner 1: Near Dark Store (23.0230, 72.5720) ~80m away from dark store
+        DeliveryPartner partner1 = DeliveryPartner.builder()
+                .id(1L)
+                .status(DeliveryPartnerStatus.AVAILABLE)
+                .isOnline(true)
+                .currentLat(23.0230)
+                .currentLng(72.5720)
+                .build();
+
+        // Partner 2: Far from Dark Store (23.0800, 72.5900) ~7km from dark store, near customer
+        DeliveryPartner partner2 = DeliveryPartner.builder()
+                .id(2L)
+                .status(DeliveryPartnerStatus.AVAILABLE)
+                .isOnline(true)
+                .currentLat(23.0800)
+                .currentLng(72.5900)
+                .build();
         
         when(partnerRepository.findByStatusAndIsOnlineTrue(DeliveryPartnerStatus.AVAILABLE))
                 .thenReturn(List.of(partner1, partner2));
                 
         deliveryService.assignNearestRider(order);
         
+        // Partner 1 must be chosen because they are closest to dark store pickup
         assertEquals(DeliveryPartnerStatus.BUSY, partner1.getStatus());
         assertEquals(OrderStatus.RIDER_ASSIGNED, order.getStatus());
         verify(assignmentRepository).save(any());
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void assignNearestRider_skipsZeroZeroCoordinates() {
+        Store store = Store.builder()
+                .id(1L)
+                .latitude(23.0225)
+                .longitude(72.5714)
+                .build();
+
+        Order order = new Order();
+        order.setId(51L);
+        order.setStore(store);
+
+        // Partner 1 has (0.0, 0.0) invalid GPS
+        DeliveryPartner partnerInvalidGps = DeliveryPartner.builder()
+                .id(1L)
+                .status(DeliveryPartnerStatus.AVAILABLE)
+                .isOnline(true)
+                .currentLat(0.0)
+                .currentLng(0.0)
+                .build();
+
+        // Partner 2 has real GPS (23.0250, 72.5730)
+        DeliveryPartner partnerValidGps = DeliveryPartner.builder()
+                .id(2L)
+                .status(DeliveryPartnerStatus.AVAILABLE)
+                .isOnline(true)
+                .currentLat(23.0250)
+                .currentLng(72.5730)
+                .build();
+
+        when(partnerRepository.findByStatusAndIsOnlineTrue(DeliveryPartnerStatus.AVAILABLE))
+                .thenReturn(List.of(partnerInvalidGps, partnerValidGps));
+
+        deliveryService.assignNearestRider(order);
+
+        // Partner 2 must be chosen, partner 1 skipped
+        assertEquals(DeliveryPartnerStatus.AVAILABLE, partnerInvalidGps.getStatus());
+        assertEquals(DeliveryPartnerStatus.BUSY, partnerValidGps.getStatus());
+        assertEquals(OrderStatus.RIDER_ASSIGNED, order.getStatus());
     }
 }

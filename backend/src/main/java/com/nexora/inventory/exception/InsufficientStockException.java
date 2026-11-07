@@ -11,6 +11,10 @@ package com.nexora.inventory.exception;
  */
 public class InsufficientStockException extends RuntimeException {
 
+    public InsufficientStockException(Long productId) {
+        super("Insufficient stock for product id " + productId);
+    }
+
     public InsufficientStockException(Long productId, int requestedAmount, int availableQuantity) {
         super("Insufficient stock for product id " + productId + ": requested " + requestedAmount +
                 " but only " + availableQuantity + " available");

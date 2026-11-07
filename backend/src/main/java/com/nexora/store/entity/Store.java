@@ -65,17 +65,21 @@ public class Store {
     @Column(name = "closing_time")
     private LocalTime closingTime;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "service_radius_km")
+    @Builder.Default
+    private Double serviceRadiusKm = 4.0;
+
     /**
      * @ManyToMany owning side. The @JoinTable annotation tells
      * Hibernate to create and manage a "store_categories" join table
      * with columns store_id and category_id — we never write SQL
      * for this table ourselves.
-     *
-     * FetchType.LAZY: categories are only loaded from the database
-     * when store.getCategories() is actually called, not automatically
-     * every time a Store is fetched. This avoids pulling in extra data
-     * (and extra SQL joins) we might not need for a given request —
-     * important for keeping list endpoints (e.g. "browse stores") fast.
      */
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(

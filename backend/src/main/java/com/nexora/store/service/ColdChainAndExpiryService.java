@@ -19,9 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -78,18 +76,19 @@ public class ColdChainAndExpiryService {
     }
 
     /**
-     * First-Expiry-First-Out (FEFO) Allocation Engine:
-     * Allocates stock strictly from non-quarantined batches expiring earliest.
+     * First-Expiry-First-Out (FEFO) Allocation Engine with detailed quantity tracking:
+     * Allocates stock strictly from non-quarantined batches expiring earliest and returns
+     * each batch along with the exact quantity allocated from it.
      */
     @Transactional
-    public List<InventoryBatch> allocateFefoStock(Long productId, Long storeId, int requestedQty) {
+    public Map<InventoryBatch, Integer> allocateFefoStockDetailed(Long productId, Long storeId, int requestedQty) {
         List<InventoryBatch> eligibleBatches = batchRepository
                 .findByProductIdAndStoreIdAndIsQuarantinedFalseAndAvailableQuantityGreaterThanOrderByExpiryDateAsc(
                         productId, storeId, 0
                 );
 
         int remaining = requestedQty;
-        List<InventoryBatch> allocatedBatches = new ArrayList<>();
+        Map<InventoryBatch, Integer> allocations = new LinkedHashMap<>();
 
         for (InventoryBatch batch : eligibleBatches) {
             if (remaining <= 0) break;
@@ -99,7 +98,7 @@ public class ColdChainAndExpiryService {
             batch.setReservedQuantity(batch.getReservedQuantity() + toTake);
             remaining -= toTake;
             batchRepository.save(batch);
-            allocatedBatches.add(batch);
+            allocations.put(batch, toTake);
             log.info("FEFO Allocated {} units of SKU #{} from batch #{} (Expires: {})",
                     toTake, productId, batch.getBatchNumber(), batch.getExpiryDate());
         }
@@ -109,7 +108,15 @@ public class ColdChainAndExpiryService {
                     productId, requestedQty, requestedQty - remaining);
         }
 
-        return allocatedBatches;
+        return allocations;
+    }
+
+    /**
+     * Legacy wrapper returning list of allocated batches.
+     */
+    @Transactional
+    public List<InventoryBatch> allocateFefoStock(Long productId, Long storeId, int requestedQty) {
+        return new ArrayList<>(allocateFefoStockDetailed(productId, storeId, requestedQty).keySet());
     }
 
     @Transactional

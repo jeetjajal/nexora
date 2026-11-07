@@ -93,6 +93,9 @@ public class OrderService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.nexora.notification.service.NotificationService notificationService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.inventory.service.InventoryReservationService inventoryReservationService;
+
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
 
@@ -311,15 +314,16 @@ public class OrderService {
                         );
 
                 /*
-                 * Atomically consume stock.
-                 *
-                 * If insufficient stock exists, InventoryService
-                 * throws and the entire checkout transaction rolls back.
+                 * Atomically consume stock / reserve inventory.
+                 * If Two-Phase Inventory Reservation is active, stock reservation
+                 * and FEFO batch allocation are bound in batch below.
                  */
-                inventoryService.reduceStockForOrder(
-                        product.getId(),
-                        cartItem.getQuantity()
-                );
+                if (inventoryReservationService == null) {
+                    inventoryService.reduceStockForOrder(
+                            product.getId(),
+                            cartItem.getQuantity()
+                    );
+                }
 
                 OrderItem orderItem =
                         OrderItem.builder()
@@ -351,7 +355,12 @@ public class OrderService {
             savedOrder.setSubtotal(storeSubtotal);
             savedOrder.setTotalAmount(totalAmount);
 
-            orderRepository.save(savedOrder);
+            savedOrder = orderRepository.save(savedOrder);
+
+            // Phase 1 NEXORA 3.0: Two-Phase Inventory Reservation Engine with FEFO & 10-minute TTL
+            if (inventoryReservationService != null) {
+                inventoryReservationService.createReservationsForOrder(savedOrder, 10);
+            }
 
             // Phase 16: Publish OrderCreatedEvent to Kafka
             try {
@@ -661,6 +670,11 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
 
+        // Phase 1 NEXORA 3.0: Commit Two-Phase Inventory Reservations
+        if (inventoryReservationService != null) {
+            inventoryReservationService.commitReservationsForOrder(saved.getId());
+        }
+
         // Phase 17: Real-time WebSocket Order Tracking
         try {
             if (orderTrackingWebSocketService != null) {
@@ -826,7 +840,9 @@ public class OrderService {
                 throw new ProductUnavailableException(product.getId());
             }
 
-            inventoryService.reduceStockForOrder(product.getId(), itemReq.getQuantity());
+            if (inventoryReservationService == null) {
+                inventoryService.reduceStockForOrder(product.getId(), itemReq.getQuantity());
+            }
 
             BigDecimal unitPrice = product.getPrice().subtract(
                     product.getDiscount() != null ? product.getDiscount() : BigDecimal.ZERO
@@ -863,6 +879,11 @@ public class OrderService {
         savedOrder.setTotalAmount(finalTotal);
 
         Order finalizedOrder = orderRepository.save(savedOrder);
+
+        // Phase 1 NEXORA 3.0: Two-Phase Inventory Reservation Engine with FEFO & 10-minute TTL
+        if (inventoryReservationService != null) {
+            inventoryReservationService.createReservationsForOrder(finalizedOrder, 10);
+        }
 
         try {
             kafkaEventProducer.publishOrderCreated(finalizedOrder);
@@ -1051,13 +1072,15 @@ public class OrderService {
     }
 
     private void restoreStockForOrder(Order order) {
-
-        for (OrderItem item : order.getItems()) {
-
-            inventoryService.restoreStockForOrder(
-                    item.getProduct().getId(),
-                    item.getQuantity()
-            );
+        if (inventoryReservationService != null) {
+            inventoryReservationService.releaseReservationsForOrder(order.getId(), "Order cancelled/refunded");
+        } else {
+            for (OrderItem item : order.getItems()) {
+                inventoryService.restoreStockForOrder(
+                        item.getProduct().getId(),
+                        item.getQuantity()
+                );
+            }
         }
     }
 

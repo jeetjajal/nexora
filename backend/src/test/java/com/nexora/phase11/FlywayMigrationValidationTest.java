@@ -16,11 +16,11 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("Phase 11: Flyway Migration History & Staging Database Validation")
+@DisplayName("Phase 11 & Phase 1: Flyway Migration History & Staging Database Validation")
 public class FlywayMigrationValidationTest {
 
     @Test
-    @DisplayName("Verify Flyway migrations V1 to V5 apply cleanly and idempotently")
+    @DisplayName("Verify Flyway migrations V1 to V7 apply cleanly and idempotently")
     void testFlywayMigrationsAgainstStagingDatabase() throws Exception {
         // 1. Setup isolated in-memory MySQL-compatible database simulating staging environment
         JdbcDataSource dataSource = new JdbcDataSource();
@@ -37,11 +37,11 @@ public class FlywayMigrationValidationTest {
 
         // 3. Execute migrations
         int appliedCount = flyway.migrate().migrationsExecuted;
-        assertEquals(5, appliedCount, "Should execute exactly 5 migration scripts (V1, V2, V3, V4 and V5)");
+        assertEquals(7, appliedCount, "Should execute exactly 7 migration scripts (V1 through V7)");
 
         // 4. Verify Migration Info & History
         MigrationInfo[] appliedMigrations = flyway.info().applied();
-        assertEquals(5, appliedMigrations.length);
+        assertEquals(7, appliedMigrations.length);
 
         assertEquals("1", appliedMigrations[0].getVersion().getVersion());
         assertEquals("init schema", appliedMigrations[0].getDescription());
@@ -62,6 +62,14 @@ public class FlywayMigrationValidationTest {
         assertEquals("5", appliedMigrations[4].getVersion().getVersion());
         assertEquals("nexora 2 features", appliedMigrations[4].getDescription());
         assertEquals(MigrationState.SUCCESS, appliedMigrations[4].getState());
+
+        assertEquals("6", appliedMigrations[5].getVersion().getVersion());
+        assertEquals("enterprise logistics batching coldchain whatsapp", appliedMigrations[5].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[5].getState());
+
+        assertEquals("7", appliedMigrations[6].getVersion().getVersion());
+        assertEquals("phase1 inventory reservation and partial refunds", appliedMigrations[6].getDescription());
+        assertEquals(MigrationState.SUCCESS, appliedMigrations[6].getState());
 
         // 5. Verify physical schema tables generated in the database
         try (Connection conn = dataSource.getConnection()) {
@@ -107,6 +115,9 @@ public class FlywayMigrationValidationTest {
             assertTrue(tableNames.contains("wallet_accounts"), "Table 'wallet_accounts' should exist");
             assertTrue(tableNames.contains("wallet_transactions"), "Table 'wallet_transactions' should exist");
 
+            // NEXORA 3.0 Phase 1 tables from V7
+            assertTrue(tableNames.contains("inventory_reservations"), "Table 'inventory_reservations' should exist");
+
             // Verify count of categories and subcategories in database
             try (Statement stmt = conn.createStatement()) {
                 try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM categories")) {
@@ -120,6 +131,12 @@ public class FlywayMigrationValidationTest {
                 try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM product_variants")) {
                     assertTrue(rs.next());
                     assertTrue(rs.getInt(1) >= 125, "Database should contain product variants for all subcategories");
+                }
+                try (ResultSet rs = stmt.executeQuery("SELECT latitude, longitude, service_radius_km FROM stores WHERE id = 1")) {
+                    assertTrue(rs.next());
+                    assertEquals(23.0125, rs.getDouble("latitude"), 0.0001);
+                    assertEquals(72.5075, rs.getDouble("longitude"), 0.0001);
+                    assertEquals(3.5, rs.getDouble("service_radius_km"), 0.01);
                 }
             }
         }
