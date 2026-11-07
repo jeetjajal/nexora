@@ -284,6 +284,51 @@ export const OrderTrackingModal: React.FC = () => {
               </div>
             </div>
 
+            {/* Phase 2: Confidence-Based Delivery Window & Road Routing Intelligence */}
+            <div className="bg-white border border-brand-border p-3.5 rounded-2xl space-y-2 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock size={15} className="text-brand-primary" />
+                  <span className="text-xs font-black text-brand-text">
+                    {trackingData?.deliveryWindowStart && trackingData?.deliveryWindowEnd
+                      ? "Delivery Window: " + new Date(trackingData.deliveryWindowStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " – " + new Date(trackingData.deliveryWindowEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : "Estimated Delivery: ~" + liveEta + " mins"}
+                  </span>
+                </div>
+                <span className={"text-[10px] font-black px-2 py-0.5 rounded-full border " + (
+                  trackingData?.confidence === 'HIGH'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    : trackingData?.confidence === 'MEDIUM'
+                    ? 'bg-blue-50 text-blue-700 border-blue-300'
+                    : 'bg-amber-50 text-amber-700 border-amber-300'
+                )}>
+                  {(trackingData?.confidence || 'HIGH') + " ACCURACY"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-brand-muted pt-1 border-t border-slate-100">
+                <div className="flex items-center gap-1.5">
+                  <Navigation size={12} className="text-brand-primary" />
+                  <span>
+                    {trackingData?.roadDistanceMeters
+                      ? ((trackingData.roadDistanceMeters / 1000).toFixed(1) + " km road distance")
+                      : 'Road Network Routed'}
+                  </span>
+                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">
+                    {trackingData?.routingProvider || 'OSRM'}
+                  </span>
+                </div>
+                {trackingData?.isRiderLocationStale ? (
+                  <span className="text-amber-600 font-bold flex items-center gap-1 text-[10px]">
+                    <AlertTriangle size={11} /> Reconnecting GPS
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 font-bold flex items-center gap-1 text-[10px]">
+                    <Zap size={11} /> Live Telemetry
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* View 1: Real-Time Leaflet Road Map with SSE coordinates */}
             {viewMode === 'MAP' && (
               <div className="space-y-3">

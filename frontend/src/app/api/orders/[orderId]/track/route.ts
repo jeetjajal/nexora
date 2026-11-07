@@ -102,6 +102,17 @@ export async function GET(
         assignedRiderVehicle: 'Hero Electric NYX EV',
         timeline,
         createdAt: new Date(now.getTime() - 4 * 60000).toISOString(),
+        deliveryWindowStart: new Date(now.getTime() + 5 * 60000).toISOString(),
+        deliveryWindowEnd: new Date(now.getTime() + 11 * 60000).toISOString(),
+        confidence: 'HIGH',
+        roadDistanceMeters: 1850,
+        roadDurationSeconds: 420,
+        routingProvider: 'OSRM',
+        isFallbackEstimate: false,
+        riderLatitude: 23.0365,
+        riderLongitude: 72.5611,
+        riderLocationFreshnessSeconds: 12,
+        isRiderLocationStale: false,
       },
     });
   } catch (err: any) {

@@ -30,6 +30,7 @@ import com.nexora.role.entity.RoleName;
 import com.nexora.store.entity.Store;
 import com.nexora.store.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,6 +67,7 @@ import static com.nexora.order.entity.OrderStatus.*;
  * visibility rules) and status transitions (with the state machine
  * that prevents invalid changes like DELIVERED -> PREPARING).
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -95,6 +97,15 @@ public class OrderService {
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.nexora.inventory.service.InventoryReservationService inventoryReservationService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.delivery.service.DeliveryEtaService deliveryEtaService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.delivery.service.RiderLocationService riderLocationService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.delivery.repository.DeliveryAssignmentRepository deliveryAssignmentRepository;
 
     @Value("${nexora.order.delivery-fee}")
     private BigDecimal deliveryFee;
@@ -966,6 +977,59 @@ public class OrderService {
 
         List<TrackingTimelineEvent> timeline = buildTrackingTimeline(order);
 
+        String riderName = "Ramesh Patel";
+        String riderPhone = "+91 98765 43210";
+        String riderVehicle = "Hero Electric NYX EV";
+        Double riderLat = null;
+        Double riderLng = null;
+        Long riderLocationFreshnessSeconds = null;
+        Boolean isRiderLocationStale = null;
+
+        if (deliveryAssignmentRepository != null) {
+            try {
+                var assignmentOpt = deliveryAssignmentRepository.findByOrderId(order.getId());
+                if (assignmentOpt.isPresent()) {
+                    var assignment = assignmentOpt.get();
+                    if (assignment.getDeliveryPartner() != null) {
+                        var partner = assignment.getDeliveryPartner();
+                        if (partner.getUser() != null) {
+                            if (partner.getUser().getName() != null) riderName = partner.getUser().getName();
+                            if (partner.getUser().getPhone() != null) riderPhone = partner.getUser().getPhone();
+                        }
+
+                        // Query Redis Geospatial telemetry for live rider location
+                        if (riderLocationService != null) {
+                            var telemetryOpt = riderLocationService.getRiderLocation(partner.getId());
+                            if (telemetryOpt.isPresent()) {
+                                var telemetry = telemetryOpt.get();
+                                riderLat = telemetry.getLatitude();
+                                riderLng = telemetry.getLongitude();
+                                riderLocationFreshnessSeconds = telemetry.getAgeSeconds();
+                                isRiderLocationStale = !telemetry.isFresh();
+                            }
+                        } else if (partner.getCurrentLat() != null && partner.getCurrentLng() != null) {
+                            riderLat = partner.getCurrentLat();
+                            riderLng = partner.getCurrentLng();
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.debug("Assignment lookup for order #{} tracking deferred: {}", order.getId(), ex.getMessage());
+            }
+        }
+
+        // Calculate confidence-based ETA
+        com.nexora.delivery.dto.DeliveryEtaResponse eta = null;
+        if (deliveryEtaService != null) {
+            try {
+                eta = deliveryEtaService.calculateOrderEta(order, riderLat, riderLng, riderLocationFreshnessSeconds);
+            } catch (Exception ex) {
+                log.debug("ETA calculation for order #{} deferred: {}", order.getId(), ex.getMessage());
+            }
+        }
+
+        int estimatedMins = (eta != null) ? eta.getEstimatedDeliveryMinutes() : estimateDeliveryMinutes(order.getStatus());
+
         return OrderTrackingResponse.builder()
                 .orderId(order.getId())
                 .status(order.getStatus().name())
@@ -973,10 +1037,21 @@ public class OrderService {
                 .storeAddress(order.getStore() != null ? order.getStore().getDescription() : "Ground Floor, Shapath V, SG Highway, Ahmedabad")
                 .deliveryAddress(order.getDeliveryAddress() != null ? 
                         order.getDeliveryAddress().getAddressLine1() + ", " + order.getDeliveryAddress().getCity() : "Customer Address")
-                .estimatedDeliveryMinutes(estimateDeliveryMinutes(order.getStatus()))
-                .assignedRiderName("Ramesh Patel")
-                .assignedRiderPhone("+91 98765 43210")
-                .assignedRiderVehicle("Hero Electric NYX EV")
+                .estimatedDeliveryMinutes(estimatedMins)
+                .deliveryWindowStart(eta != null ? eta.getDeliveryWindowStart() : null)
+                .deliveryWindowEnd(eta != null ? eta.getDeliveryWindowEnd() : null)
+                .confidence(eta != null ? eta.getConfidence() : "MEDIUM")
+                .roadDistanceMeters(eta != null ? eta.getRoadDistanceMeters() : null)
+                .roadDurationSeconds(eta != null ? eta.getRoadDurationSeconds() : null)
+                .routingProvider(eta != null ? eta.getRoutingProvider() : "HAVERSINE_FALLBACK")
+                .isFallbackEstimate(eta != null ? eta.isFallbackEstimate() : true)
+                .riderLatitude(riderLat)
+                .riderLongitude(riderLng)
+                .riderLocationFreshnessSeconds(riderLocationFreshnessSeconds)
+                .isRiderLocationStale(isRiderLocationStale)
+                .assignedRiderName(riderName)
+                .assignedRiderPhone(riderPhone)
+                .assignedRiderVehicle(riderVehicle)
                 .deliveryOtp(null)
                 .timeline(timeline)
                 .totalAmount(order.getTotalAmount())

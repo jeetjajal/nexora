@@ -28,4 +28,17 @@ public class OrderTrackingResponse {
     private String paymentMethod;
     private LocalDateTime createdAt;
     private LocalDateTime deliveredAt;
+
+    // Phase 2: Intelligent Delivery Engine Additions
+    private LocalDateTime deliveryWindowStart;
+    private LocalDateTime deliveryWindowEnd;
+    private String confidence; // HIGH, MEDIUM, LOW
+    private Double roadDistanceMeters;
+    private Integer roadDurationSeconds;
+    private String routingProvider;
+    private Boolean isFallbackEstimate;
+    private Double riderLatitude;
+    private Double riderLongitude;
+    private Long riderLocationFreshnessSeconds;
+    private Boolean isRiderLocationStale;
 }

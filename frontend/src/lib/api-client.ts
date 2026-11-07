@@ -136,6 +136,17 @@ export interface OrderTrackingInfo {
   speedKmh?: number;
   timeline: TrackingTimelineEvent[];
   createdAt: string;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  roadDistanceMeters?: number;
+  roadDurationSeconds?: number;
+  routingProvider?: string;
+  isFallbackEstimate?: boolean;
+  riderLatitude?: number;
+  riderLongitude?: number;
+  riderLocationFreshnessSeconds?: number;
+  isRiderLocationStale?: boolean;
 }
 
 const IS_SERVER = typeof window === 'undefined';

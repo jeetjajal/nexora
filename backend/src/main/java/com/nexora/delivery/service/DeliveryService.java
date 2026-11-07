@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,6 +49,15 @@ public class DeliveryService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private com.nexora.websocket.service.OrderTrackingWebSocketService orderTrackingWebSocketService;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private RiderLocationService riderLocationService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.nexora.routing.service.RoutingService routingService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private DeliveryEtaService deliveryEtaService;
+
     private static final double EARTH_RADIUS_KM = 6371.0;
     private static final Pattern GEO_PATTERN = Pattern.compile("GEO:\\s*([0-9.-]+)\\s*,\\s*([0-9.-]+)");
 
@@ -63,6 +73,9 @@ public class DeliveryService {
         partner.setIsOnline(isOnline);
         if (!isOnline) {
             partner.setStatus(DeliveryPartnerStatus.OFFLINE);
+            if (riderLocationService != null) {
+                riderLocationService.removeRiderLocation(partner.getId());
+            }
         } else if (partner.getStatus() == DeliveryPartnerStatus.OFFLINE) {
             partner.setStatus(DeliveryPartnerStatus.AVAILABLE);
         }
@@ -76,6 +89,16 @@ public class DeliveryService {
         partner.setCurrentLat(request.getLatitude());
         partner.setCurrentLng(request.getLongitude());
         partnerRepository.save(partner);
+
+        // Phase 2: Ingest into Redis Geospatial Index (GEOADD + Hash Telemetry)
+        if (riderLocationService != null) {
+            try {
+                riderLocationService.updateRiderLocation(
+                        partner.getId(), request.getLatitude(), request.getLongitude(), null, null);
+            } catch (Exception ex) {
+                log.debug("Redis rider location update deferred: {}", ex.getMessage());
+            }
+        }
 
         DeliveryLocation location = DeliveryLocation.builder()
                 .deliveryPartner(partner)
@@ -138,8 +161,29 @@ public class DeliveryService {
             return;
         }
 
-        // 2. Fetch available online riders only after validating pickup origin
-        List<DeliveryPartner> availablePartners = partnerRepository.findByStatusAndIsOnlineTrue(DeliveryPartnerStatus.AVAILABLE);
+        // 2. Fetch available online riders using Redis Geospatial first, with DB fallback
+        final List<DeliveryPartner> availablePartners = new ArrayList<>();
+        double searchRadiusKm = (store != null && store.getServiceRadiusKm() != null) ? store.getServiceRadiusKm() : 4.0;
+
+        if (riderLocationService != null) {
+            try {
+                List<com.nexora.delivery.dto.NearbyRiderDto> nearby =
+                        riderLocationService.findNearbyAvailableRiders(storeLat, storeLng, searchRadiusKm);
+                for (com.nexora.delivery.dto.NearbyRiderDto dto : nearby) {
+                    partnerRepository.findById(dto.getRiderId()).ifPresent(p -> {
+                        if (p.getStatus() == DeliveryPartnerStatus.AVAILABLE && Boolean.TRUE.equals(p.getIsOnline())) {
+                            availablePartners.add(p);
+                        }
+                    });
+                }
+            } catch (Exception ex) {
+                log.debug("Redis geospatial rider lookup deferred: {}", ex.getMessage());
+            }
+        }
+
+        if (availablePartners.isEmpty()) {
+            availablePartners.addAll(partnerRepository.findByStatusAndIsOnlineTrue(DeliveryPartnerStatus.AVAILABLE));
+        }
 
         if (availablePartners.isEmpty()) {
             log.warn("No available riders for order {}", order.getId());
@@ -149,7 +193,7 @@ public class DeliveryService {
         DeliveryPartner nearestPartner = null;
         double minDistance = Double.MAX_VALUE;
 
-        // 2. Find closest rider to the Dark Store with verified non-zero GPS coordinates
+        // 3. Find closest rider to the Dark Store with verified non-zero GPS coordinates
         for (DeliveryPartner partner : availablePartners) {
             Double pLat = partner.getCurrentLat();
             Double pLng = partner.getCurrentLng();

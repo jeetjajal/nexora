@@ -43,6 +43,9 @@ public class DeliveryBatchingService {
     @Autowired(required = false)
     private OrderTrackingWebSocketService orderTrackingWebSocketService;
 
+    @Autowired(required = false)
+    private com.nexora.routing.service.RoutingService routingService;
+
     private static final double EARTH_RADIUS_KM = 6371.0;
     private static final double DEFAULT_STORE_LAT = 23.0373;
     private static final double DEFAULT_STORE_LNG = 72.5118;
@@ -179,7 +182,16 @@ public class DeliveryBatchingService {
         for (Order o : sequencedOrders) {
             double dropLat = o.getDeliveryAddress().getLatitude();
             double dropLng = o.getDeliveryAddress().getLongitude();
-            totalDistance += calculateHaversineDistance(curLat, curLng, dropLat, dropLng);
+            double legDist = calculateHaversineDistance(curLat, curLng, dropLat, dropLng);
+            if (routingService != null) {
+                try {
+                    double roadDistKm = routingService.getRouteDistanceMeters(curLat, curLng, dropLat, dropLng) / 1000.0;
+                    if (roadDistKm > 0) {
+                        legDist = roadDistKm;
+                    }
+                } catch (Exception ignored) {}
+            }
+            totalDistance += legDist;
             curLat = dropLat;
             curLng = dropLng;
         }
